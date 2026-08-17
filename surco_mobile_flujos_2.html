@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Surco · Flujos móviles II</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink-900: #16302A; --ink-800: #1F3D34; --ink-700: #2E4A40;
+    --paper: #F5F1E8; --paper-raised: #FFFFFF;
+    --clay: #C1603C; --clay-dark: #A34F31; --wheat-gold: #C99A34; --sprout: #4C8F5B; --sprout-dark: #3D7A4A;
+    --line: rgba(22,48,42,0.12);
+    --ink-on-dark: #F2EFE6; --muted-on-dark: rgba(242,239,230,0.62);
+    --muted-on-paper: rgba(22,48,42,0.60);
+    --tone-blue: #4E7C8B; --tone-blue-bg: #E4EEEF;
+    --tone-amber: #A97A2E; --tone-amber-bg: #F7EDD9;
+    --tone-green: #4C8F5B; --tone-green-bg: #E6F1E8;
+    --tone-red: #B15A42; --tone-red-bg: #F5E4DE;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center;
+    gap: 56px; padding: 56px 24px;
+    background:
+      radial-gradient(circle at 25% 15%, rgba(22,48,42,0.09), transparent 55%),
+      radial-gradient(circle at 80% 85%, rgba(193,96,60,0.07), transparent 50%),
+      #EAE6DB;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  .col { display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .col-label { font-size:11px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; color: var(--ink-700); text-align:center; }
+  .col-label b { color: var(--clay-dark); }
+
+  .phone { position:relative; width:358px; padding:12px; border-radius:48px; background: linear-gradient(160deg, #14211D, #0A0F0D);
+    box-shadow: 0 34px 70px rgba(10,20,16,.4), 0 8px 20px rgba(10,20,16,.3), inset 0 0 0 1px rgba(255,255,255,.04); }
+  .notch { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:112px; height:26px; background:#0A0F0D; border-radius:0 0 16px 16px; z-index:6; }
+  .home-indicator { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:116px; height:5px; border-radius:4px; background:rgba(255,255,255,.28); z-index:6; }
+  .screen { position:relative; width:334px; height:722px; background: var(--paper); border-radius:36px; overflow:hidden; display:flex; flex-direction:column; }
+  .statusbar { height:42px; flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:0 26px; color:var(--ink-on-dark); font-size:13px; font-weight:600; background:var(--ink-900); }
+  .statusbar .glyphs { display:flex; align-items:center; gap:6px; opacity:.85; }
+  .eyebrow { font-size:9.5px; font-weight:750; letter-spacing:.14em; margin:0 0 4px; color: var(--muted-on-paper); }
+
+  .topbar-compact { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background: var(--paper); gap: 10px; }
+  .back-btn { border:0; background: var(--paper-raised); border:1px solid var(--line); width:32px; height:32px; border-radius:9px; display:grid; place-items:center; color: var(--ink-800); flex:0 0 auto; cursor:pointer; }
+  .topbar-compact strong { font-size:14px; color: var(--ink-900); font-family:'Space Grotesk',sans-serif; }
+  .status-chip { font-size:10px; font-weight:700; padding:4px 9px; border-radius:20px; white-space:nowrap; }
+  .icon-btn { border:1px solid var(--line); background: var(--paper-raised); width:32px; height:32px; border-radius:9px; display:grid; place-items:center; color: var(--ink-800); cursor:pointer; }
+
+  .card { background: var(--paper-raised); border:1px solid var(--line); border-radius:15px; padding:14px 15px; margin-bottom:12px; }
+  .card-label { font-size:10px; font-weight:750; letter-spacing:.08em; color: var(--muted-on-paper); text-transform:uppercase; margin:0 0 10px; }
+
+  .mini-map { position:relative; height:110px; border-radius:11px; overflow:hidden; margin-bottom:10px; background-color:#e7ecdf;
+    background-image: linear-gradient(28deg, transparent 0 48%, rgba(173,186,165,.35) 48.5% 49%, transparent 49.5%),
+      repeating-linear-gradient(82deg, transparent 0 22px, rgba(190,201,180,.28) 23px 25px, transparent 26px 44px); }
+  .mini-map .blob { position:absolute; width:72%; height:70%; left:14%; top:15%; border:2px solid rgba(120,157,118,.65); border-radius:42% 58% 48% 40%; background: rgba(188,213,172,.42); }
+  .mini-map .pin { position:absolute; left:52%; top:46%; width:20px; height:20px; border-radius:50% 50% 50% 0; transform: rotate(-45deg) translate(-50%,-50%); background: var(--clay); box-shadow:0 2px 6px rgba(45,75,55,.3); display:grid; place-items:center; }
+  .mini-map .pin::after { content:''; width:6px; height:6px; border-radius:50%; background:#fff; transform: rotate(45deg); }
+  .badge-check { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color: var(--sprout); background: var(--tone-green-bg); padding:5px 10px; border-radius:8px; }
+
+  /* ============ SCREEN 4 — LISTA DE ÓRDENES ============ */
+  .search-box { display:flex; align-items:center; gap:8px; border:1.4px solid var(--line); border-radius:11px; padding:10px 12px; background:#FBFAF7; margin: 0 18px 12px; }
+  .search-box svg { color: var(--muted-on-paper); flex:0 0 auto; }
+  .search-box input { border:0; outline:0; background:transparent; font-size:13px; color:var(--ink-900); width:100%; font-family:inherit; }
+
+  .chip-row { display:flex; gap:8px; padding: 0 18px 14px; overflow-x:auto; scrollbar-width:none; }
+  .chip-row::-webkit-scrollbar { display:none; }
+  .chip { flex:0 0 auto; font-size:11.5px; font-weight:650; padding:7px 13px; border-radius:20px; border:1.4px solid var(--line); color: var(--ink-800); background:#fff; white-space:nowrap; }
+  .chip.active { background: var(--ink-900); color:#fff; border-color: var(--ink-900); }
+
+  .list-content { flex:1 1 auto; overflow-y:auto; padding: 0 18px 18px; scrollbar-width:none; }
+  .list-content::-webkit-scrollbar { display:none; }
+  .order-card { display:flex; align-items:center; gap:12px; background: var(--paper-raised); border:1px solid var(--line); border-radius:14px; padding:13px 14px; margin-bottom:10px; }
+  .order-icon { width:38px; height:38px; border-radius:10px; display:grid; place-items:center; flex:0 0 auto; }
+  .tone-blue .order-icon  { background: var(--tone-blue-bg);  color: var(--tone-blue); }
+  .tone-amber .order-icon { background: var(--tone-amber-bg); color: var(--tone-amber); }
+  .tone-green .order-icon { background: var(--tone-green-bg); color: var(--tone-green); }
+  .tone-red .order-icon   { background: var(--tone-red-bg);   color: var(--tone-red); }
+  .order-info { flex:1; min-width:0; }
+  .order-info strong { display:block; font-size:13.5px; color: var(--ink-900); font-weight:650; }
+  .order-info span { display:block; font-size:11px; color: var(--muted-on-paper); margin-top:2px; }
+  .order-meta { display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+  .status { font-size:9.5px; font-weight:700; padding:3.5px 8px; border-radius:6px; white-space:nowrap; }
+  .status-blue { color:var(--tone-blue); background:var(--tone-blue-bg); }
+  .status-amber { color:var(--tone-amber); background:var(--tone-amber-bg); }
+  .status-green { color:var(--tone-green); background:var(--tone-green-bg); }
+  .status-red { color:var(--tone-red); background:var(--tone-red-bg); }
+  .time-text { font-size:10px; color: var(--muted-on-paper); }
+
+  /* ============ SCREEN 5 — CIERRE DE LABOR ============ */
+  .order-content { flex:1 1 auto; overflow-y:auto; padding: 4px 18px 18px; scrollbar-width:none; }
+  .order-content::-webkit-scrollbar { display:none; }
+  .order-title { font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:650; color: var(--ink-900); letter-spacing:-.015em; margin: 8px 0 3px; }
+  .order-sub { font-size:12px; color: var(--muted-on-paper); margin: 0 0 10px; }
+  .elapsed-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:650; color: var(--ink-800); background:#EDE9DD; padding:5px 10px; border-radius:8px; margin-bottom:16px; }
+
+  .applied-row { padding: 10px 0; border-top:1px solid var(--line); }
+  .applied-row:first-of-type { border-top:0; padding-top:0; }
+  .applied-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+  .insumo-name { font-size:12.5px; color: var(--ink-900); font-weight:600; }
+  .planned-text { font-size:10.5px; color: var(--muted-on-paper); }
+  .applied-bottom { display:flex; align-items:center; gap:8px; }
+  .applied-input { flex:1; display:flex; align-items:center; justify-content:space-between; border:1.4px solid var(--line); border-radius:9px; padding:8px 10px; background:#FBFAF7; }
+  .applied-input strong { font-size:13px; color: var(--ink-900); }
+  .applied-input span { font-size:10.5px; color: var(--muted-on-paper); }
+  .desvio-chip { font-size:10px; font-weight:750; padding:6px 9px; border-radius:8px; white-space:nowrap; }
+  .desvio-ok { color: var(--sprout); background: var(--tone-green-bg); }
+  .desvio-warn { color: var(--tone-amber); background: var(--tone-amber-bg); }
+
+  .end-bar { flex:0 0 auto; padding:14px 18px 18px; background: var(--paper); border-top:1px solid var(--line); }
+  .btn-end { border:0; border-radius:13px; padding:15px; background: var(--sprout); color:#fff; font-size:14px; font-weight:750; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-end:hover { background: var(--sprout-dark); }
+  .end-hint { text-align:center; font-size:10px; color: var(--muted-on-paper); margin-top:8px; }
+
+  /* ============ SCREEN 6 — GANADERÍA ============ */
+  .herd-content { flex:1 1 auto; overflow-y:auto; padding: 4px 18px 18px; scrollbar-width:none; }
+  .herd-content::-webkit-scrollbar { display:none; }
+  .herd-title { font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:650; color: var(--ink-900); margin: 8px 0 3px; }
+  .herd-sub { font-size:12px; color: var(--muted-on-paper); margin: 0 0 16px; }
+
+  .gauge-card { background: linear-gradient(160deg, var(--ink-900), var(--ink-800)); border-radius:16px; padding:16px 17px; margin-bottom:12px; color: var(--ink-on-dark); }
+  .gauge-top { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .gauge-label { font-size:11px; color: var(--muted-on-dark); font-weight:650; }
+  .gauge-value { font-size:30px; font-weight:700; }
+  .gauge-value small { font-size:13px; font-weight:600; color: var(--muted-on-dark); margin-left:3px; }
+  .gauge-track { position:relative; height:8px; border-radius:5px; background: rgba(255,255,255,.14); overflow: visible; }
+  .gauge-fill { height:100%; width:79%; border-radius:5px; background: linear-gradient(90deg, var(--sprout-dark), var(--sprout)); }
+  .gauge-marker { position:absolute; top:-4px; left:79%; width:2px; height:16px; background:#fff; }
+  .gauge-range { display:flex; justify-content:space-between; font-size:9.5px; color: var(--muted-on-dark); margin-top:6px; }
+
+  .comp-row { display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-top:1px solid var(--line); }
+  .comp-row:first-of-type { border-top:0; padding-top:0; }
+  .comp-name { font-size:12.5px; color: var(--ink-900); font-weight:600; }
+  .comp-meta { display:flex; align-items:center; gap:8px; }
+  .comp-count { font-size:12px; color: var(--muted-on-paper); }
+  .ev-tag { font-size:10px; font-weight:700; color: var(--ink-700); background:#EDE9DD; padding:3px 7px; border-radius:6px; }
+
+  .btn-outline-full { border:1.5px solid var(--line); border-radius:12px; padding:12px; background:#fff; color: var(--ink-800); font-size:13px; font-weight:700; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; }
+</style>
+</head>
+<body>
+
+  <!-- ============ 4. LISTA DE ÓRDENES ============ -->
+  <div class="col">
+    <span class="col-label">4 &nbsp;·&nbsp; <b>Lista de órdenes</b></span>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="glyphs">●●●</span></div>
+        <div class="topbar-compact">
+          <strong>Órdenes de trabajo</strong>
+          <button class="icon-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
+          </button>
+        </div>
+        <div class="search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input placeholder="Buscar orden..." />
+        </div>
+        <div class="chip-row">
+          <span class="chip active">Todas</span>
+          <span class="chip">Pendientes</span>
+          <span class="chip">En curso</span>
+          <span class="chip">Finalizadas</span>
+        </div>
+        <div class="list-content">
+          <div class="order-card tone-blue">
+            <div class="order-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3C12 3 6 11 6 15a6 6 0 0 0 12 0c0-4-6-12-6-12z"/></svg></div>
+            <div class="order-info"><strong>Pulverización</strong><span>Lote Norte · 48 ha</span></div>
+            <div class="order-meta"><span class="status status-blue">En curso</span><span class="time-text mono">08:40</span></div>
+          </div>
+          <div class="order-card tone-amber">
+            <div class="order-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="1.7" fill="currentColor"/><circle cx="15.5" cy="9.5" r="1.7" fill="currentColor"/><circle cx="11.5" cy="15" r="1.7" fill="currentColor"/></svg></div>
+            <div class="order-info"><strong>Fertilización</strong><span>La Loma · 32 ha</span></div>
+            <div class="order-meta"><span class="status status-amber">Pendiente</span><span class="time-text mono">Mañana 07:00</span></div>
+          </div>
+          <div class="order-card tone-green">
+            <div class="order-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 22v-6M7 8l5-4 5 4M6 14c0 4 2.5 6 6 6s6-2 6-6"/></svg></div>
+            <div class="order-info"><strong>Siembra</strong><span>El Ombú · 64 ha</span></div>
+            <div class="order-meta"><span class="status status-green">Finalizada</span><span class="time-text mono">12 Jun</span></div>
+          </div>
+          <div class="order-card tone-red">
+            <div class="order-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v5M12 17h.01M4 19h16L12 4 4 19z"/></svg></div>
+            <div class="order-info"><strong>Cosecha</strong><span>Lote Sur · 91 ha</span></div>
+            <div class="order-meta"><span class="status status-red">Requiere revisión</span><span class="time-text mono">11 Jun</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ============ 5. CIERRE DE LABOR ============ -->
+  <div class="col">
+    <span class="col-label">5 &nbsp;·&nbsp; <b>Cierre de labor</b></span>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="glyphs">●●●</span></div>
+        <div class="topbar-compact">
+          <button class="back-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <strong>Finalizar labor</strong>
+          <span class="status-chip" style="color:var(--tone-blue); background:var(--tone-blue-bg);">En curso</span>
+        </div>
+        <div class="order-content">
+          <h1 class="order-title">Pulverización</h1>
+          <p class="order-sub">Lote Norte · <span class="mono">48 ha</span></p>
+          <span class="elapsed-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            Iniciada hace <span class="mono">2h 15min</span>
+          </span>
+
+          <div class="card">
+            <p class="card-label">Insumos aplicados</p>
+            <div class="applied-row">
+              <div class="applied-top">
+                <span class="insumo-name">Glifosato 48%</span>
+                <span class="planned-text">plan. <span class="mono">3 L/ha</span></span>
+              </div>
+              <div class="applied-bottom">
+                <div class="applied-input"><strong class="mono">3.4</strong><span>L/ha</span></div>
+                <span class="desvio-chip desvio-warn">+13%</span>
+              </div>
+            </div>
+            <div class="applied-row">
+              <div class="applied-top">
+                <span class="insumo-name">Coadyuvante</span>
+                <span class="planned-text">plan. <span class="mono">0.5 L/ha</span></span>
+              </div>
+              <div class="applied-bottom">
+                <div class="applied-input"><strong class="mono">0.5</strong><span>L/ha</span></div>
+                <span class="desvio-chip desvio-ok">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <p class="card-label">Ubicación de cierre</p>
+            <div class="mini-map"><div class="blob"></div><div class="pin"></div></div>
+            <span class="badge-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              Estás dentro del lote
+            </span>
+          </div>
+        </div>
+        <div class="end-bar">
+          <button class="btn-end">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            Finalizar labor
+          </button>
+          <p class="end-hint">Se registra tu ubicación y hora de cierre</p>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ============ 6. GANADERÍA — RODEO ============ -->
+  <div class="col">
+    <span class="col-label">6 &nbsp;·&nbsp; <b>Ganadería · Rodeo</b></span>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="glyphs">●●●</span></div>
+        <div class="topbar-compact">
+          <button class="back-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <strong>Rodeo 04</strong>
+          <span class="status-chip" style="color:var(--ink-700); background:#EDE9DD;">Potrero 04</span>
+        </div>
+        <div class="herd-content">
+          <p class="herd-sub" style="margin-top:6px;">45 cabezas · Vacas de cría</p>
+
+          <div class="gauge-card">
+            <div class="gauge-top">
+              <span class="gauge-label">CARGA ANIMAL ACTUAL</span>
+              <span class="gauge-value mono">0.95<small>EV/ha</small></span>
+            </div>
+            <div class="gauge-track">
+              <div class="gauge-fill"></div>
+              <div class="gauge-marker"></div>
+            </div>
+            <div class="gauge-range"><span>0.0</span><span>Recomendado 0.8–1.0</span><span>1.4</span></div>
+          </div>
+
+          <div class="card">
+            <p class="card-label">Composición del rodeo</p>
+            <div class="comp-row">
+              <span class="comp-name">Vaca de cría</span>
+              <div class="comp-meta"><span class="comp-count mono">40 cab.</span><span class="ev-tag">×1.0</span></div>
+            </div>
+            <div class="comp-row">
+              <span class="comp-name">Toro</span>
+              <div class="comp-meta"><span class="comp-count mono">5 cab.</span><span class="ev-tag">×1.5</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <p class="card-label">Potrero</p>
+            <div class="mini-map"><div class="blob"></div><div class="pin"></div></div>
+            <span class="planned-text">Superficie <span class="mono">50 ha</span> · Estado <b style="color:var(--sprout);">en pastoreo</b></span>
+          </div>
+
+          <button class="btn-outline-full">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Registrar movimiento
+          </button>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+</body>
+</html>

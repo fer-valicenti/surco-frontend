@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Surco · Flujos móviles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink-900: #16302A; --ink-800: #1F3D34; --ink-700: #2E4A40;
+    --paper: #F5F1E8; --paper-raised: #FFFFFF;
+    --clay: #C1603C; --clay-dark: #A34F31; --wheat-gold: #C99A34; --sprout: #4C8F5B;
+    --line: rgba(22,48,42,0.12);
+    --ink-on-dark: #F2EFE6; --muted-on-dark: rgba(242,239,230,0.62);
+    --muted-on-paper: rgba(22,48,42,0.60);
+    --tone-blue: #4E7C8B; --tone-blue-bg: #E4EEEF;
+    --tone-amber: #A97A2E; --tone-amber-bg: #F7EDD9;
+    --tone-green: #4C8F5B; --tone-green-bg: #E6F1E8;
+    --tone-red: #B15A42; --tone-red-bg: #F5E4DE;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center;
+    gap: 56px; padding: 56px 24px;
+    background:
+      radial-gradient(circle at 25% 15%, rgba(22,48,42,0.09), transparent 55%),
+      radial-gradient(circle at 80% 85%, rgba(193,96,60,0.07), transparent 50%),
+      #EAE6DB;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .col-label {
+    font-size: 11px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-700); text-align: center;
+  }
+  .col-label b { color: var(--clay-dark); }
+
+  .phone {
+    position: relative; width: 358px; padding: 12px;
+    border-radius: 48px; background: linear-gradient(160deg, #14211D, #0A0F0D);
+    box-shadow: 0 34px 70px rgba(10,20,16,.4), 0 8px 20px rgba(10,20,16,.3), inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .notch { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:112px; height:26px; background:#0A0F0D; border-radius:0 0 16px 16px; z-index:6; }
+  .home-indicator { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:116px; height:5px; border-radius:4px; background:rgba(255,255,255,.28); z-index:6; }
+  .screen { position:relative; width:334px; height:722px; background: var(--paper); border-radius:36px; overflow:hidden; display:flex; flex-direction:column; }
+  .statusbar { height:42px; flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:0 26px; color:var(--ink-on-dark); font-size:13px; font-weight:600; background:var(--ink-900); }
+  .statusbar .glyphs { display:flex; align-items:center; gap:6px; opacity:.85; }
+
+  .eyebrow { font-size:9.5px; font-weight:750; letter-spacing:.14em; margin:0 0 4px; }
+
+  /* ============ SCREEN 1 — LOGIN ============ */
+  .login-hero {
+    flex: 0 0 auto;
+    background: linear-gradient(165deg, var(--ink-900), var(--ink-800) 75%);
+    padding: 30px 26px 46px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    color: var(--ink-on-dark);
+  }
+  .brand-mark {
+    width: 58px; height: 58px; border-radius: 16px;
+    background: rgba(193,96,60,0.16); border: 1px solid rgba(193,96,60,.35);
+    display: grid; place-items: center; color: var(--clay); margin-bottom: 14px;
+  }
+  .wordmark { font-family:'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  .tagline { font-size: 12px; color: var(--muted-on-dark); margin-top: 6px; }
+
+  .sheet {
+    flex: 1 1 auto; background: var(--paper-raised);
+    margin-top: -26px; border-radius: 26px 26px 0 0;
+    padding: 28px 24px 22px;
+    box-shadow: 0 -8px 24px rgba(22,48,42,.06);
+    display: flex; flex-direction: column;
+  }
+  .field { margin-bottom: 16px; }
+  .field .eyebrow { color: var(--muted-on-paper); }
+  .field-box {
+    display: flex; align-items: center; gap: 9px;
+    border: 1.4px solid var(--line); border-radius: 10px;
+    padding: 11px 12px; background: #FBFAF7;
+  }
+  .field-box:focus-within { border-color: var(--clay); background: #fff; }
+  .field-box svg { color: var(--muted-on-paper); flex: 0 0 auto; }
+  .field-box input {
+    border: 0; outline: 0; background: transparent; width: 100%;
+    font-size: 13.5px; color: var(--ink-900); font-family: inherit;
+  }
+  .row-between { display:flex; align-items:center; justify-content:space-between; margin: 2px 0 20px; }
+  .check-row { display:flex; align-items:center; gap:7px; font-size:11.5px; color: var(--muted-on-paper); }
+  .checkbox { width:15px; height:15px; border-radius:4px; border:1.4px solid var(--line); }
+  .link-text { font-size: 11.5px; color: var(--clay-dark); font-weight: 650; }
+
+  .btn-primary {
+    border:0; border-radius:11px; padding:13px; background: var(--clay); color:#fff;
+    font-size: 13.5px; font-weight: 700; cursor:pointer; width:100%;
+  }
+  .divider { display:flex; align-items:center; gap:10px; margin: 18px 0; color: var(--muted-on-paper); font-size: 10.5px; }
+  .divider::before, .divider::after { content:''; flex:1; height:1px; background: var(--line); }
+  .btn-outline {
+    border: 1.4px solid var(--line); border-radius: 11px; padding: 12px; background: transparent;
+    color: var(--ink-800); font-size: 12.5px; font-weight: 650; width: 100%; cursor: pointer;
+  }
+  .offline-note {
+    margin-top: auto; padding-top: 18px; display:flex; align-items:flex-start; gap:7px;
+    font-size: 10.5px; color: var(--muted-on-paper); line-height: 1.4;
+  }
+  .offline-note svg { flex: 0 0 auto; margin-top: 1px; color: var(--sprout); }
+
+  /* ============ SCREEN 2 — DETALLE DE ORDEN ============ */
+  .topbar-compact {
+    flex: 0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 18px; background: var(--paper);
+  }
+  .back-btn { border:0; background: var(--paper-raised); border:1px solid var(--line); width:32px; height:32px; border-radius:9px; display:grid; place-items:center; color: var(--ink-800); }
+  .topbar-compact strong { font-size: 13px; color: var(--ink-900); }
+  .status-chip { font-size: 10px; font-weight: 700; padding: 4px 9px; border-radius: 20px; }
+
+  .order-content { flex:1 1 auto; overflow-y:auto; padding: 4px 18px 18px; scrollbar-width:none; }
+  .order-content::-webkit-scrollbar { display:none; }
+
+  .order-hero-icon { width:44px; height:44px; border-radius:12px; background: var(--tone-blue-bg); color: var(--tone-blue); display:grid; place-items:center; margin-bottom: 10px; }
+  .order-title { font-family:'Space Grotesk',sans-serif; font-size: 21px; font-weight: 650; color: var(--ink-900); letter-spacing:-.015em; margin: 0 0 3px; }
+  .order-sub { font-size: 12.5px; color: var(--muted-on-paper); margin: 0 0 18px; }
+
+  .card { background: var(--paper-raised); border:1px solid var(--line); border-radius: 15px; padding: 14px 15px; margin-bottom: 12px; }
+  .card-label { font-size: 10px; font-weight: 750; letter-spacing:.08em; color: var(--muted-on-paper); text-transform: uppercase; margin: 0 0 10px; }
+
+  .mini-map { position:relative; height: 118px; border-radius: 11px; overflow:hidden; margin-bottom: 10px;
+    background-color:#e7ecdf;
+    background-image:
+      linear-gradient(28deg, transparent 0 48%, rgba(173,186,165,.35) 48.5% 49%, transparent 49.5%),
+      repeating-linear-gradient(82deg, transparent 0 22px, rgba(190,201,180,.28) 23px 25px, transparent 26px 44px);
+  }
+  .mini-map .blob { position:absolute; width:72%; height:70%; left:14%; top:15%; border:2px solid rgba(120,157,118,.65); border-radius:42% 58% 48% 40%; background: rgba(188,213,172,.42); }
+  .mini-map .pin { position:absolute; left:52%; top:46%; width:20px; height:20px; border-radius:50% 50% 50% 0; transform: rotate(-45deg) translate(-50%,-50%); background: var(--clay); box-shadow:0 2px 6px rgba(45,75,55,.3); display:grid; place-items:center; }
+  .mini-map .pin::after { content:''; width:6px; height:6px; border-radius:50%; background:#fff; transform: rotate(45deg); }
+
+  .badge-check { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color: var(--sprout); background: var(--tone-green-bg); padding: 5px 10px; border-radius: 8px; }
+
+  .insumo-row { display:flex; align-items:center; justify-content:space-between; padding: 8px 0; border-top: 1px solid var(--line); }
+  .insumo-row:first-of-type { border-top: 0; padding-top: 0; }
+  .insumo-name { font-size: 12.5px; color: var(--ink-900); font-weight: 600; }
+  .insumo-qty { font-size: 12px; color: var(--muted-on-paper); }
+
+  .start-bar { flex:0 0 auto; padding: 14px 18px 18px; background: var(--paper); border-top: 1px solid var(--line); }
+  .btn-start { border:0; border-radius: 13px; padding: 15px; background: var(--clay); color:#fff; font-size: 14px; font-weight: 750;
+    width:100%; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .start-hint { text-align:center; font-size: 10px; color: var(--muted-on-paper); margin-top: 8px; }
+
+  /* ============ SCREEN 3 — SCOUTING ============ */
+  .camera-preview { position:relative; height: 300px; flex: 0 0 auto; overflow:hidden;
+    background:
+      radial-gradient(circle at 30% 30%, rgba(76,143,91,.55), transparent 55%),
+      radial-gradient(circle at 70% 60%, rgba(120,150,90,.45), transparent 50%),
+      linear-gradient(160deg, #4B6E4A, #2E4A34);
+  }
+  .cam-corner { position:absolute; width:26px; height:26px; border-color:#fff; opacity:.85; }
+  .cam-tl { top:16px; left:16px; border-top:2.5px solid; border-left:2.5px solid; border-radius: 6px 0 0 0; }
+  .cam-tr { top:16px; right:16px; border-top:2.5px solid; border-right:2.5px solid; border-radius: 0 6px 0 0; }
+  .cam-bl { bottom:16px; left:16px; border-bottom:2.5px solid; border-left:2.5px solid; border-radius: 0 0 0 6px; }
+  .cam-br { bottom:16px; right:16px; border-bottom:2.5px solid; border-right:2.5px solid; border-radius: 0 0 6px 0; }
+  .gps-pill { position:absolute; top:16px; left:50%; transform:translateX(-50%); background: rgba(10,20,16,.55); backdrop-filter: blur(2px); color:#fff; font-size:10px; padding:5px 10px; border-radius:20px; display:flex; align-items:center; gap:5px; }
+  .capture-btn { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:58px; height:58px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.4); box-shadow:0 4px 14px rgba(0,0,0,.3); cursor:pointer; }
+
+  .scout-content { flex:1 1 auto; overflow-y:auto; padding: 16px 18px 18px; scrollbar-width:none; }
+  .scout-content::-webkit-scrollbar { display:none; }
+
+  .lot-chip { display:inline-flex; align-items:center; gap:6px; background: var(--tone-green-bg); color: var(--sprout); font-size:11px; font-weight:700; padding:5px 10px; border-radius:8px; margin-bottom:16px; }
+
+  .segmented { display:flex; background:#EDE9DD; border-radius:10px; padding:3px; margin-bottom:16px; }
+  .segmented button { flex:1; border:0; background:transparent; padding:8px 4px; font-size:11.5px; font-weight:650; color: var(--muted-on-paper); border-radius:8px; cursor:pointer; }
+  .segmented button.active { background:#fff; color: var(--ink-900); box-shadow: 0 1px 3px rgba(22,48,42,.12); }
+
+  .select-field { display:flex; align-items:center; justify-content:space-between; border:1.4px solid var(--line); border-radius:10px; padding:12px 13px; background:#FBFAF7; margin-bottom:8px; }
+  .select-field strong { font-size:13px; color: var(--ink-900); }
+  .not-found-link { display:flex; align-items:center; gap:6px; font-size:11px; color: var(--clay-dark); font-weight:650; margin-bottom: 18px; padding-left: 2px; }
+
+  .stepper { display:flex; align-items:center; justify-content:space-between; border:1.4px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:18px; }
+  .stepper button { width:30px; height:30px; border-radius:8px; border:1px solid var(--line); background:#fff; font-size:16px; color:var(--ink-800); cursor:pointer; }
+  .stepper .value { font-size:15px; font-weight:700; color: var(--ink-900); }
+
+  .switch-row { display:flex; align-items:center; justify-content:space-between; margin-bottom: 22px; }
+  .switch-row span { font-size:12.5px; color: var(--ink-900); font-weight:600; }
+  .switch { width:38px; height:22px; border-radius:20px; background: var(--line); position:relative; }
+  .switch::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+
+  .btn-save { border:0; border-radius:13px; padding:15px; background: var(--clay); color:#fff; font-size:14px; font-weight:750; width:100%; }
+</style>
+</head>
+<body>
+
+  <!-- ============ 1. LOGIN ============ -->
+  <div class="col">
+    <span class="col-label">1 &nbsp;·&nbsp; <b>Iniciar sesión</b></span>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="glyphs">●●●</span></div>
+        <div class="login-hero">
+          <div class="brand-mark">
+            <svg width="30" height="20" viewBox="0 0 24 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M2 3c2-2 4-2 6 0s4 2 6 0s4-2 6 0"/>
+              <path d="M2 8c2-2 4-2 6 0s4 2 6 0s4-2 6 0"/>
+              <path d="M2 13c2-2 4-2 6 0s4 2 6 0s4-2 6 0"/>
+            </svg>
+          </div>
+          <div class="wordmark">surco</div>
+          <div class="tagline">Gestión de campo, con o sin señal</div>
+        </div>
+        <div class="sheet">
+          <div class="field">
+            <span class="eyebrow">USUARIO</span>
+            <div class="field-box">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+              <input type="text" placeholder="martin.rios" />
+            </div>
+          </div>
+          <div class="field">
+            <span class="eyebrow">CONTRASEÑA</span>
+            <div class="field-box">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <input type="password" placeholder="••••••••" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+          </div>
+          <div class="row-between">
+            <div class="check-row"><span class="checkbox"></span>Recordarme</div>
+            <span class="link-text">¿Olvidaste tu contraseña?</span>
+          </div>
+          <button class="btn-primary">Ingresar</button>
+          <div class="divider">O</div>
+          <button class="btn-outline">Ingresar con código de invitación</button>
+          <div class="offline-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.5a10 10 0 0 1 3-2.1M19 12.5a10 10 0 0 0-3-2.1"/><circle cx="12" cy="20" r="1"/></svg>
+            Iniciá sesión una vez — después funciona sin conexión.
+          </div>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ============ 2. DETALLE DE ORDEN ============ -->
+  <div class="col">
+    <span class="col-label">2 &nbsp;·&nbsp; <b>Detalle de orden</b></span>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="glyphs">●●●</span></div>
+        <div class="topbar-compact">
+          <button class="back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <strong>Orden de trabajo</strong>
+          <span class="status-chip" style="color:var(--tone-amber); background:var(--tone-amber-bg);">Pendiente</span>
+        </div>
+        <div class="order-content">
+          <div class="order-hero-icon">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C12 3 6 11 6 15a6 6 0 0 0 12 0c0-4-6-12-6-12z"/></svg>
+          </div>
+          <h1 class="order-title">Pulverización</h1>
+          <p class="order-sub">Lote Norte · <span class="mono">48 ha</span> · Hoy, 08:40</p>
+
+          <div class="card">
+            <p class="card-label">Ubicación</p>
+            <div class="mini-map">
+              <div class="blob"></div>
+              <div class="pin"></div>
+            </div>
+            <span class="badge-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              Estás dentro del lote
+            </span>
+          </div>
+
+          <div class="card">
+            <p class="card-label">Insumos planificados</p>
+            <div class="insumo-row">
+              <span class="insumo-name">Glifosato 48%</span>
+              <span class="insumo-qty mono">3 L/ha</span>
+            </div>
+            <div class="insumo-row">
+              <span class="insumo-name">Coadyuvante</span>
+              <span class="insumo-qty mono">0.5 L/ha</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <p class="card-label">Notas del agrónomo</p>
+            <p style="font-size:12.5px; color:var(--ink-800); margin:0; line-height:1.5;">Verificar viento antes de aplicar. Umbral máx. 12 km/h.</p>
+          </div>
+        </div>
+        <div class="start-bar">
+          <button class="btn-start">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>
+            Iniciar labor
+          </button>
+          <p class="start-hint">Se registra tu ubicación y hora de inicio</p>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ============ 3. SCOUTING ============ -->
+  <div class="col">
+    <span class="col-label">3 &nbsp;·&nbsp; <b>Registrar hallazgo</b></span>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="glyphs">●●●</span></div>
+        <div class="topbar-compact" style="padding-bottom:0;">
+          <button class="back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <strong>Nuevo hallazgo</strong>
+          <span style="width:32px;"></span>
+        </div>
+        <div class="camera-preview">
+          <div class="cam-corner cam-tl"></div><div class="cam-corner cam-tr"></div>
+          <div class="cam-corner cam-bl"></div><div class="cam-corner cam-br"></div>
+          <div class="gps-pill">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
+            <span class="mono">-38.0055, -57.5426</span>
+          </div>
+          <div class="capture-btn"></div>
+        </div>
+        <div class="scout-content">
+          <span class="lot-chip">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+            Lote Sur · detectado por GPS
+          </span>
+
+          <span class="eyebrow" style="color:var(--muted-on-paper); display:block; margin-bottom:8px;">TIPO DE HALLAZGO</span>
+          <div class="segmented">
+            <button>Plaga</button>
+            <button class="active">Maleza</button>
+            <button>Enfermedad</button>
+          </div>
+
+          <span class="eyebrow" style="color:var(--muted-on-paper); display:block; margin-bottom:8px;">ESPECIE</span>
+          <div class="select-field">
+            <strong>Seleccionar del catálogo</strong>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div class="not-found-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+            No está en la lista — marcar para revisión
+          </div>
+
+          <span class="eyebrow" style="color:var(--muted-on-paper); display:block; margin-bottom:8px;">COBERTURA ESTIMADA</span>
+          <div class="stepper">
+            <button>−</button>
+            <span class="value mono">35%</span>
+            <button>+</button>
+          </div>
+
+          <div class="switch-row">
+            <span>Sospecha de resistencia</span>
+            <div class="switch"></div>
+          </div>
+
+          <button class="btn-save">Guardar hallazgo</button>
+        </div>
+      </div>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+</body>
+</html>

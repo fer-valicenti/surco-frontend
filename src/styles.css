@@ -1,0 +1,230 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
+@import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition — paleta "Surco" (tierra): tinta verde
+ * profunda + terracota (clay) + oro trigo, tomada 1:1 de los mockups de
+ * referencia de la app móvil (surco_mobile_*.html). Valores en hex,
+ * a propósito (no oklch) — son los mismos que usan esos mockups.
+ *
+ * El @theme inline block mapea las custom properties a clases de
+ * Tailwind (--color-primary -> bg-primary, text-primary).
+ *
+ * Para agregar un color semántico nuevo:
+ * 1. Agregar la variable a :root (y a .dark si aplica)
+ * 2. Registrarla en @theme inline como --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-surface-ink: var(--surface-ink);
+  --color-surface-ink-foreground: var(--surface-ink-foreground);
+  --color-field: var(--field);
+  --color-field-foreground: var(--field-foreground);
+  --color-warn: var(--warn);
+  --color-warn-foreground: var(--warn-foreground);
+  --color-ok: var(--ok);
+  --color-ok-foreground: var(--ok-foreground);
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+:root {
+  --radius: 0.875rem;
+
+  /* Papel de campo: crudo cálido, tinta verde profunda, acento terracota. */
+  --background: #EAE6DB;
+  --foreground: #16302A;
+  --card: #FFFFFF;
+  --card-foreground: #16302A;
+  --popover: #FFFFFF;
+  --popover-foreground: #16302A;
+  --primary: #C1603C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FFFFFF;
+  --secondary-foreground: #16302A;
+  --muted: #F5F1E8;
+  --muted-foreground: rgba(22, 48, 42, 0.6);
+  --accent: #C99A34;
+  --accent-foreground: #16302A;
+  --destructive: #B15A42;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(22, 48, 42, 0.12);
+  --input: rgba(22, 48, 42, 0.12);
+  --ring: #C1603C;
+
+  /* Tokens propios de Surco */
+  --surface-ink: #16302A;
+  --surface-ink-foreground: #F2EFE6;
+  --field: #4C8F5B;
+  --field-foreground: #FFFFFF;
+  --warn: #A97A2E;
+  --warn-foreground: #16302A;
+  --ok: #4C8F5B;
+  --ok-foreground: #FFFFFF;
+  --grid-line: rgba(22, 48, 42, 0.1);
+
+  --chart-1: #C1603C;
+  --chart-2: #C99A34;
+  --chart-3: #4C8F5B;
+  --chart-4: #B15A42;
+  --chart-5: #4E7C8B;
+  --sidebar: #16302A;
+  --sidebar-foreground: #F2EFE6;
+  --sidebar-primary: #C1603C;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1F3D34;
+  --sidebar-accent-foreground: #F2EFE6;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #C99A34;
+
+  /* Tonos de estado (badges/status) — mismos 4 pares que los mockups. */
+  --tone-blue: #4E7C8B;
+  --tone-blue-bg: #E4EEEF;
+  --tone-amber: #A97A2E;
+  --tone-amber-bg: #F7EDD9;
+  --tone-green: #4C8F5B;
+  --tone-green-bg: #E6F1E8;
+  --tone-red: #B15A42;
+  --tone-red-bg: #F5E4DE;
+}
+
+.dark {
+  --background: #101E19;
+  --foreground: #F2EFE6;
+  --card: #16302A;
+  --card-foreground: #F2EFE6;
+  --popover: #16302A;
+  --popover-foreground: #F2EFE6;
+  --primary: #D3764F;
+  --primary-foreground: #16302A;
+  --secondary: #1F3D34;
+  --secondary-foreground: #F2EFE6;
+  --muted: #1B342D;
+  --muted-foreground: rgba(242, 239, 230, 0.62);
+  --accent: #D9AC4C;
+  --accent-foreground: #16302A;
+  --destructive: #C46B4F;
+  --destructive-foreground: #16302A;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.16);
+  --ring: #D3764F;
+  --surface-ink: #0B1613;
+  --surface-ink-foreground: #F2EFE6;
+  --field: #5FA06E;
+  --field-foreground: #0B1613;
+  --warn: #D9AC4C;
+  --warn-foreground: #16302A;
+  --ok: #5FA06E;
+  --ok-foreground: #0B1613;
+  --grid-line: rgba(255, 255, 255, 0.08);
+  --chart-1: #D3764F;
+  --chart-2: #D9AC4C;
+  --chart-3: #5FA06E;
+  --chart-4: #C46B4F;
+  --chart-5: #6FA0B3;
+  --sidebar: #0B1613;
+  --sidebar-foreground: #F2EFE6;
+  --sidebar-primary: #D9AC4C;
+  --sidebar-primary-foreground: #16302A;
+  --sidebar-accent: #1B342D;
+  --sidebar-accent-foreground: #F2EFE6;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: #D9AC4C;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Rótulo de sección al estilo de una planilla de campo. */
+@utility label-field {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Fondo con retícula de lote, sutil. */
+@utility paper-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+}

@@ -1,0 +1,23 @@
+node_modules/
+dist/
+dist-ssr/
+.tanstack/
+src/routeTree.gen.ts
+
+.env
+.env.local
+.env.*.local
+
+*.log
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Scaffold aparte, sin relación con el código de la app (src/, index.html,
+# vite.config.ts en la raíz) — tiene su propio package.json/node_modules.
+project/
