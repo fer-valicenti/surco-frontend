@@ -90,6 +90,7 @@ interface GanaderiaContextValue {
     rodeoId: string,
     potreroDestinoId: string,
   ) => Promise<{ cargaResultanteEvHa: number | null; advertenciaSobrepastoreo: boolean }>;
+  crearRodeo: (nombre: string, categoriaId: string) => Promise<Rodeo>;
 }
 
 const GanaderiaContext = createContext<GanaderiaContextValue | null>(null);
@@ -199,9 +200,29 @@ export function GanaderiaProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const crearRodeo: GanaderiaContextValue["crearRodeo"] = async (nombre, categoriaId) => {
+    const creado = await api.post<RodeoApi>("/rodeos", {
+      establecimientoId: establecimiento!.id,
+      nombre,
+      categoriaId,
+    });
+    const mapeado = rodeoDesdeApi(creado);
+    setRodeos((prev) => [...prev, mapeado]);
+    return mapeado;
+  };
+
   return (
     <GanaderiaContext.Provider
-      value={{ rodeos, eventosSanitarios, cargando, movimientosDe, rotacionesDe, registrarMovimiento, moverRodeo }}
+      value={{
+        rodeos,
+        eventosSanitarios,
+        cargando,
+        movimientosDe,
+        rotacionesDe,
+        registrarMovimiento,
+        moverRodeo,
+        crearRodeo,
+      }}
     >
       {children}
     </GanaderiaContext.Provider>

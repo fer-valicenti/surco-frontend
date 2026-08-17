@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ApiError } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-store";
 import { useGanaderia } from "@/lib/ganaderia-store";
 import { useCatalogos } from "@/lib/catalogos-store";
 import {
@@ -27,6 +28,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   cabezasDeRodeo,
@@ -36,6 +38,7 @@ import {
   fechaCorta,
   nf,
   nfInt,
+  puedeGestionar,
   type Rodeo,
   type TipoMovimiento,
 } from "@/lib/surco-data";
@@ -64,12 +67,14 @@ function mensajeError(e: unknown, fallback: string) {
 
 function GanaderiaPage() {
   const isMobile = useIsMobile();
+  const { establecimiento } = useAuth();
   const {
     rodeos,
     eventosSanitarios,
     movimientosDe,
     registrarMovimiento: registrarMovimientoCtx,
     moverRodeo: moverRodeoCtx,
+    crearRodeo: crearRodeoCtx,
   } = useGanaderia();
   const { categoriasGanado, potreros } = useCatalogos();
   const nombrePotrero = (id: string | null) => (id ? (potreros.find((p) => p.id === id)?.nombre ?? id) : "Sin potrero");
@@ -79,10 +84,16 @@ function GanaderiaPage() {
   const [cantidad, setCantidad] = useState("");
   const [motivo, setMotivo] = useState("");
   const [destino, setDestino] = useState("");
+  const [nuevoRodeoAbierto, setNuevoRodeoAbierto] = useState(false);
+  const [nombreRodeo, setNombreRodeo] = useState("");
+  const [categoriaRodeoId, setCategoriaRodeoId] = useState("");
 
   useEffect(() => {
     if (!destino && potreros.length) setDestino(potreros[0]!.id);
   }, [potreros, destino]);
+  useEffect(() => {
+    if (!categoriaRodeoId && categoriasGanado.length) setCategoriaRodeoId(categoriasGanado[0]!.id);
+  }, [categoriasGanado, categoriaRodeoId]);
 
   const totalCabezas = rodeos.reduce((a, r) => a + cabezasDeRodeo(r), 0);
   const totalEv = rodeos.reduce((a, r) => a + evDeRodeo(r, categoriasGanado), 0);
@@ -129,6 +140,21 @@ function GanaderiaPage() {
     }
   };
 
+  const crearRodeo = async () => {
+    if (!nombreRodeo.trim() || !categoriaRodeoId) {
+      toast.error("Completá nombre y categoría");
+      return;
+    }
+    try {
+      await crearRodeoCtx(nombreRodeo.trim(), categoriaRodeoId);
+      setNuevoRodeoAbierto(false);
+      setNombreRodeo("");
+      toast.success("Rodeo creado", { description: "Registrá el alta inicial con un movimiento de stock." });
+    } catch (e) {
+      toast.error("No se pudo crear el rodeo", { description: mensajeError(e, "Intentá de nuevo.") });
+    }
+  };
+
   if (isMobile) {
     return (
       <AppShell>
@@ -165,7 +191,60 @@ function GanaderiaPage() {
         </TabsList>
 
         <TabsContent value="rodeos" className="mt-4 space-y-3">
-          <SectionLabel aside="stock derivado de movimientos_stock">Rodeos activos</SectionLabel>
+          <SectionLabel
+            aside={
+              puedeGestionar(establecimiento?.rol) ? (
+                <Dialog open={nuevoRodeoAbierto} onOpenChange={setNuevoRodeoAbierto}>
+                  <DialogTrigger asChild>
+                    <Button size="sm"><Plus className="h-4 w-4" /> Nuevo rodeo</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nuevo rodeo</DialogTitle>
+                      <DialogDescription>
+                        Arranca en 0 cabezas — después registrá el alta con un movimiento de stock.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="rodeo-nombre">Nombre</Label>
+                        <Input
+                          id="rodeo-nombre"
+                          value={nombreRodeo}
+                          onChange={(e) => setNombreRodeo(e.target.value)}
+                          placeholder="Rodeo Potrero Norte"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Categoría</Label>
+                        {categoriasGanado.length ? (
+                          <Select value={categoriaRodeoId} onValueChange={setCategoriaRodeoId}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {categoriasGanado.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Necesitás al menos una categoría cargada en Catálogos para crear un rodeo.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={crearRodeo} disabled={!categoriasGanado.length}>Guardar rodeo</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                "stock derivado de movimientos_stock"
+              )
+            }
+          >
+            Rodeos activos
+          </SectionLabel>
           <div className="grid gap-3 lg:grid-cols-2">
             {rodeos.map((r) => {
               const cat = r.categoriaId ? categoriasGanado.find((c) => c.id === r.categoriaId) : undefined;
