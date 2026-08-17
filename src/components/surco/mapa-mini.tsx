@@ -47,5 +47,10 @@ export function MapaMiniPoligono({ puntos, claseAltura = "h-[110px]", color = "#
     return <div className={cn("rounded-[11px] bg-secondary", claseAltura)} />;
   }
 
-  return <div ref={contenedorRef} className={cn("overflow-hidden rounded-[11px]", claseAltura)} />;
+  // isolate: los panes internos de Leaflet usan z-index propios (400+) que,
+  // sin esto, escapan del stacking context de esta card y terminan pintando
+  // por encima de cualquier Dialog (z-50) abierto en la misma página — bug
+  // real visto en producción: el mini-mapa de un lote ya creado se superponía
+  // al diálogo "Nuevo lote" en vez de quedar debajo del overlay oscuro.
+  return <div ref={contenedorRef} className={cn("isolate overflow-hidden rounded-[11px]", claseAltura)} />;
 }

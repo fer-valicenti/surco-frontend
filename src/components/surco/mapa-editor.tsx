@@ -209,7 +209,11 @@ export function MapaEditorPoligono({
           {descargando ? `Descargando ${progreso.actual}/${progreso.total}` : "Guardar zona offline"}
         </button>
       </div>
-      <div ref={contenedorRef} className={cn("w-full overflow-hidden rounded-md border border-border", claseAltura)} />
+      {/* isolate: mismo motivo que mapa-mini.tsx — contiene los z-index internos de Leaflet (400+) dentro de esta card. */}
+      <div
+        ref={contenedorRef}
+        className={cn("isolate w-full overflow-hidden rounded-md border border-border", claseAltura)}
+      />
       {tilesGuardados !== null ? (
         <p className="text-[11px] text-muted-foreground">{tilesGuardados} tiles guardados en este dispositivo.</p>
       ) : null}
