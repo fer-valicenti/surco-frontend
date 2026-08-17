@@ -28,7 +28,14 @@ export function puntoDentroDe(lat: number, lng: number, puntos: Poligono): boole
   return booleanPointInPolygon(point([lng, lat]), polygon([anilloGeoJson(puntos)]));
 }
 
+// Centro por defecto cuando no hay ningún punto (establecimiento sin lotes/potreros
+// todavía) — zona agrícola de Nueve de Julio, Buenos Aires, mismo punto que usa
+// onboarding.tsx para el mapa del primer lote. Sin este fallback, centroide([])
+// da [NaN, NaN] y Leaflet tira "Invalid LatLng object" al abrir el editor de mapa.
+const CENTRO_SIN_DATOS: [number, number] = [-35.445, -60.885];
+
 export function centroide(puntos: Poligono): [number, number] {
+  if (puntos.length === 0) return CENTRO_SIN_DATOS;
   const lat = puntos.reduce((acc, p) => acc + p[0], 0) / puntos.length;
   const lng = puntos.reduce((acc, p) => acc + p[1], 0) / puntos.length;
   return [lat, lng];
