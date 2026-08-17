@@ -16,6 +16,19 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Surco" />
+    <!--
+      Servido tal cual desde public/, sin pasar por el bundler: el
+      minificador CSS de Vite (Lightning CSS) corrompe las reglas de este
+      archivo (los íconos de la barra de dibujo son SVG inline como
+      data-URI larguísimos en una sola línea) y termina vaciando
+      background-image en producción — los botones de "dibujar polígono"
+      quedaban en blanco, sin ícono, aunque funcionaban al tacto. Cargarlo
+      sin procesar evita el bug del minificador. Si se actualiza la
+      versión de @geoman-io/leaflet-geoman-free, hay que volver a copiar
+      node_modules/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css
+      a public/leaflet-geoman.css a mano.
+    -->
+    <link rel="stylesheet" href="/leaflet-geoman.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
