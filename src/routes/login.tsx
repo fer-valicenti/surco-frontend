@@ -62,7 +62,7 @@ function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="fernando@lablanqueada.com.ar"
+              placeholder="nombre@ejemplo.com"
               autoComplete="username"
               className="w-full bg-transparent text-[13.5px] text-foreground outline-none placeholder:text-muted-foreground"
               onKeyDown={(e) => e.key === "Enter" && ingresar()}

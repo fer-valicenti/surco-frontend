@@ -132,11 +132,11 @@ function OnboardingPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="ob-tunombre">Tu nombre</Label>
-                  <Input id="ob-tunombre" value={tuNombre} onChange={(e) => setTuNombre(e.target.value)} placeholder="Fernando Valicenti" />
+                  <Input id="ob-tunombre" value={tuNombre} onChange={(e) => setTuNombre(e.target.value)} placeholder="Nombre y apellido" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ob-email">Email</Label>
-                  <Input id="ob-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="fernando@lablanqueada.com.ar" />
+                  <Input id="ob-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@ejemplo.com" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -148,7 +148,7 @@ function OnboardingPage() {
               <p className="label-field">Establecimiento</p>
               <div className="space-y-2">
                 <Label htmlFor="ob-nombre">Nombre</Label>
-                <Input id="ob-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="La Blanqueada" />
+                <Input id="ob-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del establecimiento" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ob-cuit">CUIT (opcional)</Label>
