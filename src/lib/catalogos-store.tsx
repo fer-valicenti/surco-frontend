@@ -160,6 +160,7 @@ export function CatalogosProvider({ children }: { children: ReactNode }) {
 
   const agregarEspecie: CatalogosContextValue["agregarEspecie"] = async (e) => {
     const creada = await api.post<EspecieApi>("/especies", {
+      establecimientoId: establecimiento!.id,
       tipo: e.tipo,
       nombreComun: e.nombreComun,
       nombreCientifico: e.nombreCientifico || undefined,
