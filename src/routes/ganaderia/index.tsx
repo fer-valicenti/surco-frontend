@@ -39,6 +39,7 @@ import {
   nf,
   nfInt,
   puedeGestionar,
+  type EventoSanitario,
   type Rodeo,
   type TipoMovimiento,
 } from "@/lib/surco-data";
@@ -60,6 +61,13 @@ export const Route = createFileRoute("/ganaderia/")({
 });
 
 const TIPOS_MOV: TipoMovimiento[] = ["nacimiento", "compra", "venta", "muerte", "ajuste_conteo"];
+const TIPOS_EVENTO: EventoSanitario["tipo"][] = ["vacunacion", "desparasitacion", "diagnostico", "tratamiento"];
+const ETIQUETA_TIPO_EVENTO: Record<EventoSanitario["tipo"], string> = {
+  vacunacion: "Vacunación",
+  desparasitacion: "Desparasitación",
+  diagnostico: "Diagnóstico",
+  tratamiento: "Tratamiento",
+};
 
 function mensajeError(e: unknown, fallback: string) {
   return e instanceof ApiError || e instanceof Error ? e.message : fallback;
@@ -75,6 +83,7 @@ function GanaderiaPage() {
     registrarMovimiento: registrarMovimientoCtx,
     moverRodeo: moverRodeoCtx,
     crearRodeo: crearRodeoCtx,
+    crearEventoSanitario: crearEventoSanitarioCtx,
   } = useGanaderia();
   const { categoriasGanado, potreros } = useCatalogos();
   const nombrePotrero = (id: string | null) => (id ? (potreros.find((p) => p.id === id)?.nombre ?? id) : "Sin potrero");
@@ -87,6 +96,11 @@ function GanaderiaPage() {
   const [nuevoRodeoAbierto, setNuevoRodeoAbierto] = useState(false);
   const [nombreRodeo, setNombreRodeo] = useState("");
   const [categoriaRodeoId, setCategoriaRodeoId] = useState("");
+  const [nuevoEventoAbierto, setNuevoEventoAbierto] = useState(false);
+  const [rodeoEventoId, setRodeoEventoId] = useState("");
+  const [tipoEvento, setTipoEvento] = useState<EventoSanitario["tipo"]>("vacunacion");
+  const [productoEvento, setProductoEvento] = useState("");
+  const [proximoRefuerzoEvento, setProximoRefuerzoEvento] = useState("");
 
   useEffect(() => {
     if (!destino && potreros.length) setDestino(potreros[0]!.id);
@@ -94,6 +108,9 @@ function GanaderiaPage() {
   useEffect(() => {
     if (!categoriaRodeoId && categoriasGanado.length) setCategoriaRodeoId(categoriasGanado[0]!.id);
   }, [categoriasGanado, categoriaRodeoId]);
+  useEffect(() => {
+    if (!rodeoEventoId && rodeos.length) setRodeoEventoId(rodeos[0]!.id);
+  }, [rodeos, rodeoEventoId]);
 
   const totalCabezas = rodeos.reduce((a, r) => a + cabezasDeRodeo(r), 0);
   const totalEv = rodeos.reduce((a, r) => a + evDeRodeo(r, categoriasGanado), 0);
@@ -152,6 +169,22 @@ function GanaderiaPage() {
       toast.success("Rodeo creado", { description: "Registrá el alta inicial con un movimiento de stock." });
     } catch (e) {
       toast.error("No se pudo crear el rodeo", { description: mensajeError(e, "Intentá de nuevo.") });
+    }
+  };
+
+  const crearEventoSanitario = async () => {
+    if (!rodeoEventoId || !productoEvento.trim()) {
+      toast.error("Completá rodeo y producto");
+      return;
+    }
+    try {
+      await crearEventoSanitarioCtx(rodeoEventoId, tipoEvento, productoEvento.trim(), proximoRefuerzoEvento || null);
+      setNuevoEventoAbierto(false);
+      setProductoEvento("");
+      setProximoRefuerzoEvento("");
+      toast.success("Evento sanitario registrado");
+    } catch (e) {
+      toast.error("No se pudo registrar el evento", { description: mensajeError(e, "Intentá de nuevo.") });
     }
   };
 
@@ -373,7 +406,74 @@ function GanaderiaPage() {
         </TabsContent>
 
         <TabsContent value="sanidad" className="mt-4 space-y-3">
-          <SectionLabel aside="alertas de próximo refuerzo">Eventos sanitarios</SectionLabel>
+          <SectionLabel
+            aside={
+              puedeGestionar(establecimiento?.rol) && rodeos.length ? (
+                <Dialog open={nuevoEventoAbierto} onOpenChange={setNuevoEventoAbierto}>
+                  <DialogTrigger asChild>
+                    <Button size="sm"><Plus className="h-4 w-4" /> Nuevo evento</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nuevo evento sanitario</DialogTitle>
+                      <DialogDescription>Vacunación, desparasitación, diagnóstico o tratamiento.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Rodeo</Label>
+                          <Select value={rodeoEventoId} onValueChange={setRodeoEventoId}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {rodeos.map((r) => (
+                                <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tipo</Label>
+                          <Select value={tipoEvento} onValueChange={(v) => setTipoEvento(v as EventoSanitario["tipo"])}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {TIPOS_EVENTO.map((t) => (
+                                <SelectItem key={t} value={t}>{ETIQUETA_TIPO_EVENTO[t]}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="evento-producto">Producto</Label>
+                        <Input
+                          id="evento-producto"
+                          value={productoEvento}
+                          onChange={(e) => setProductoEvento(e.target.value)}
+                          placeholder="Aftosa trivalente"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="evento-refuerzo">Próximo refuerzo (opcional)</Label>
+                        <Input
+                          id="evento-refuerzo"
+                          type="date"
+                          value={proximoRefuerzoEvento}
+                          onChange={(e) => setProximoRefuerzoEvento(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={crearEventoSanitario}>Registrar evento</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                "alertas de próximo refuerzo"
+              )
+            }
+          >
+            Eventos sanitarios
+          </SectionLabel>
           <div className="overflow-x-auto rounded-md border border-border bg-card">
             <table className="w-full min-w-[600px] text-sm">
               <thead className="border-b border-border">

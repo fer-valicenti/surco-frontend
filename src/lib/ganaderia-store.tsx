@@ -91,6 +91,12 @@ interface GanaderiaContextValue {
     potreroDestinoId: string,
   ) => Promise<{ cargaResultanteEvHa: number | null; advertenciaSobrepastoreo: boolean }>;
   crearRodeo: (nombre: string, categoriaId: string) => Promise<Rodeo>;
+  crearEventoSanitario: (
+    rodeoId: string,
+    tipo: EventoSanitario["tipo"],
+    producto: string,
+    proximoRefuerzo: string | null,
+  ) => Promise<void>;
 }
 
 const GanaderiaContext = createContext<GanaderiaContextValue | null>(null);
@@ -200,6 +206,34 @@ export function GanaderiaProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const crearEventoSanitario: GanaderiaContextValue["crearEventoSanitario"] = async (
+    rodeoId,
+    tipo,
+    producto,
+    proximoRefuerzo,
+  ) => {
+    await api.post("/sync/push", {
+      changes: [
+        {
+          id: crypto.randomUUID(),
+          tabla: "eventos_sanitarios",
+          operacion: "create",
+          version: 1,
+          payload: {
+            establecimientoId: establecimiento!.id,
+            rodeoId,
+            tipo,
+            producto: producto.trim(),
+            fecha: new Date().toISOString(),
+            proximoRefuerzo,
+          },
+        },
+      ],
+    });
+    const eventos = await api.get<EventoSanitarioApi[]>("/eventos-sanitarios", { rodeoId });
+    setEventosSanitarios((prev) => [...prev.filter((e) => e.rodeoId !== rodeoId), ...eventos.map(eventoDesdeApi)]);
+  };
+
   const crearRodeo: GanaderiaContextValue["crearRodeo"] = async (nombre, categoriaId) => {
     const creado = await api.post<RodeoApi>("/rodeos", {
       establecimientoId: establecimiento!.id,
@@ -222,6 +256,7 @@ export function GanaderiaProvider({ children }: { children: ReactNode }) {
         registrarMovimiento,
         moverRodeo,
         crearRodeo,
+        crearEventoSanitario,
       }}
     >
       {children}
