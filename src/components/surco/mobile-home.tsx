@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, Droplet, Library, LogOut, Leaf, RefreshCw, Sparkles, Sprout, Users } from "lucide-react";
+import { Check, ChevronDown, CloudOff, Droplet, Library, LogOut, Leaf, Sparkles, Sprout, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,11 +38,6 @@ export function MobileHome() {
   const { registros: registrosScouting } = useScouting();
   const { lotes } = useLotes();
   const nombreLote = (id: string) => lotes.find((l) => l.id === id)?.nombre ?? id;
-  const [syncWidth, setSyncWidth] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setSyncWidth(70), 200);
-    return () => clearTimeout(t);
-  }, []);
 
   const cambiosSinSubir =
     lotes.filter((l) => l.sync !== "sincronizado").length +
@@ -102,23 +96,17 @@ export function MobileHome() {
           <Sprout className="h-[18px] w-[18px] text-accent" />
         </p>
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
-          <div className="mb-2.5 flex items-baseline justify-between">
-            <span className="text-[13.5px] font-semibold">
-              {cambiosSinSubir} cambio{cambiosSinSubir === 1 ? "" : "s"} sin subir
-            </span>
-            <span className="num text-[10.5px] text-white/60">Últ. sync 09:42</span>
-          </div>
-          <div className="h-[11px] overflow-hidden rounded-full bg-white/[0.08] shadow-inner">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#A34F31] to-primary transition-[width] duration-1000 ease-out"
-              style={{ width: `${syncWidth}%` }}
-            />
-          </div>
-          <button className="mt-3.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-[13px] font-bold text-primary-foreground transition-transform active:scale-[0.98]">
-            <RefreshCw className="h-[15px] w-[15px]" />
-            Sincronizar ahora
-          </button>
+        <div className="mt-4 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
+          {cambiosSinSubir > 0 ? (
+            <CloudOff className="h-4 w-4 shrink-0 text-warn" />
+          ) : (
+            <Check className="h-4 w-4 shrink-0 text-ok" />
+          )}
+          <span className="text-[13.5px] font-semibold">
+            {cambiosSinSubir > 0
+              ? `${cambiosSinSubir} cambio${cambiosSinSubir === 1 ? "" : "s"} sin subir`
+              : "Todo sincronizado"}
+          </span>
         </div>
       </header>
 
