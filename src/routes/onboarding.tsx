@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapaEditorPoligono } from "@/components/surco/mapa-editor";
+import { InstallApp } from "@/components/surco/install-app";
 import { useAuth } from "@/lib/auth-store";
 import { api, ApiError } from "@/lib/api-client";
 import { aGeoJson } from "@/lib/geo";
@@ -168,6 +169,7 @@ function OnboardingPage() {
             <Button className="w-full" onClick={validarDatos}>
               Continuar
             </Button>
+            <InstallApp />
           </div>
         ) : null}
 

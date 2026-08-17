@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2, Lock, Mail, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { InstallApp } from "@/components/surco/install-app";
 import { useAuth } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/login")({
@@ -125,6 +126,8 @@ function LoginPage() {
           <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ok" />
           Iniciá sesión una vez — después funciona sin conexión.
         </div>
+
+        <InstallApp />
 
         <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
           ¿Primera vez?{" "}
