@@ -4,7 +4,10 @@ import { tileLayerOffline } from "leaflet.offline";
 import { cn } from "@/lib/utils";
 import type { Poligono } from "@/lib/surco-data";
 
-const URL_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+// Satelital (Esri World Imagery, sin API key) — mismo criterio que
+// mapa-editor.tsx: se ve el mismo terreno contra el que se dibujó el
+// polígono, no una capa de calles que no aporta nada acá.
+const URL_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 interface Props {
   puntos: Poligono;

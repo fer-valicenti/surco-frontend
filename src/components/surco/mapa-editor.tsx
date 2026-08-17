@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 import { tileLayerOffline, savetiles, getStorageLength, type TileLayerOffline, type ControlSaveTiles } from "leaflet.offline";
-import { CloudDownload, Wifi, WifiOff } from "lucide-react";
+import { CloudDownload, Satellite, Map as MapIcon, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { areaHa, seSuperponen } from "@/lib/geo";
 import type { Poligono } from "@/lib/surco-data";
@@ -16,7 +16,16 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
-const URL_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+type Basemap = "satelital" | "calles";
+
+// Esri World Imagery: satelital gratuita, sin API key — a diferencia de
+// Google/Mapbox, que piden cuenta y facturación por uso. Es la que se usa
+// para delimitar el polígono en sí; OSM (calles) queda como alternativa
+// para orientarse por nombres de rutas/localidades.
+const URL_TILES_SATELITAL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const URL_TILES_CALLES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const ATRIBUCION_SATELITAL = "&copy; Esri, Maxar, Earthstar Geographics";
+const ATRIBUCION_CALLES = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 export interface PoligonoExistente {
   id: string;
@@ -34,12 +43,14 @@ interface Props {
 }
 
 /**
- * Mapa real (OpenStreetMap vía Leaflet) para dibujar/editar el polígono de
- * un lote o potrero. Los tiles se sirven de IndexedDB si ya se
- * descargaron (leaflet.offline) — funciona sin conexión con lo que se
- * haya guardado antes. Superficie y superposición se calculan con
- * geometría real (turf), mismo criterio que ST_Area/ST_Intersects en el
- * backend (ver geo.controller.ts).
+ * Mapa real (Leaflet) para dibujar/editar el polígono de un lote o
+ * potrero, con capa base intercambiable (satelital/calles) — la satelital
+ * es la que realmente permite delimitar contra el borde real del cultivo;
+ * la política/calles no muestra nada útil para eso. Los tiles se sirven de
+ * IndexedDB si ya se descargaron (leaflet.offline) — funciona sin conexión
+ * con lo que se haya guardado antes, para cualquiera de las dos capas.
+ * Superficie y superposición se calculan con geometría real (turf), mismo
+ * criterio que ST_Area/ST_Intersects en el backend (ver geo.controller.ts).
  */
 export function MapaEditorPoligono({
   centro,
@@ -51,8 +62,10 @@ export function MapaEditorPoligono({
 }: Props) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<L.Map | null>(null);
-  const saveControlRef = useRef<ControlSaveTiles | null>(null);
+  const capasRef = useRef<Record<Basemap, TileLayerOffline> | null>(null);
+  const controlesRef = useRef<Record<Basemap, ControlSaveTiles> | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
+  const [basemap, setBasemap] = useState<Basemap>("satelital");
   const [descargando, setDescargando] = useState(false);
   const [progreso, setProgreso] = useState({ actual: 0, total: 0 });
   const [tilesGuardados, setTilesGuardados] = useState<number | null>(null);
@@ -73,15 +86,54 @@ export function MapaEditorPoligono({
     const mapa = L.map(contenedorRef.current).setView(centro, zoom);
     mapaRef.current = mapa;
 
-    const capaBase: TileLayerOffline = tileLayerOffline(URL_TILES, {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      minZoom: 3,
-      maxZoom: 19,
-    }).addTo(mapa);
+    const actualizarTilesGuardados = () => {
+      getStorageLength()
+        .then(setTilesGuardados)
+        .catch(() => {});
+    };
+    actualizarTilesGuardados();
 
-    getStorageLength()
-      .then(setTilesGuardados)
-      .catch(() => {});
+    const registrarProgreso = (capa: TileLayerOffline) => {
+      capa.on("savestart", (e) => {
+        setDescargando(true);
+        // @ts-expect-error -- leaflet.offline's savestart event carries _tilesforSave, undocumented in the type.
+        setProgreso({ actual: 0, total: e._tilesforSave.length });
+      });
+      capa.on("loadtileend", () => {
+        setProgreso((p) => {
+          const actual = p.actual + 1;
+          if (actual >= p.total) {
+            setDescargando(false);
+            actualizarTilesGuardados();
+          }
+          return { ...p, actual };
+        });
+      });
+    };
+
+    const zoomlevels = [zoom - 2, zoom - 1, zoom, zoom + 1].filter((z) => z >= 3 && z <= 19);
+    const crearCapa = (url: string, attribution: string) => {
+      const capa: TileLayerOffline = tileLayerOffline(url, { attribution, minZoom: 3, maxZoom: 19 });
+      registrarProgreso(capa);
+      const control = savetiles(capa, {
+        zoomlevels,
+        confirm: (_status, callback) => callback(),
+        confirmRemoval: (_status, callback) => callback(),
+      });
+      control.addTo(mapa);
+      // Necesita pasar por addControl para que Leaflet le asigne this._map
+      // (si no, _saveTiles() explota con "Cannot read properties of
+      // undefined (reading 'getBounds')") — se oculta su UI nativa porque
+      // el botón real vive en el JSX de abajo.
+      (control as unknown as { getContainer: () => HTMLElement }).getContainer().style.display = "none";
+      return { capa, control };
+    };
+
+    const satelital = crearCapa(URL_TILES_SATELITAL, ATRIBUCION_SATELITAL);
+    const calles = crearCapa(URL_TILES_CALLES, ATRIBUCION_CALLES);
+    capasRef.current = { satelital: satelital.capa, calles: calles.capa };
+    controlesRef.current = { satelital: satelital.control, calles: calles.control };
+    capasRef.current[basemap].addTo(mapa);
 
     const capaExistentes = L.layerGroup().addTo(mapa);
     poligonosExistentes.forEach((p) => {
@@ -143,53 +195,57 @@ export function MapaEditorPoligono({
       emitirCambio(capaActual);
     });
 
-    const controlGuardado = savetiles(capaBase, {
-      zoomlevels: [zoom - 2, zoom - 1, zoom, zoom + 1].filter((z) => z >= 3 && z <= 19),
-      confirm: (_status, callback) => callback(),
-      confirmRemoval: (_status, callback) => callback(),
-    });
-    // Necesita pasar por addControl para que Leaflet le asigne this._map
-    // (si no, _saveTiles() explota con "Cannot read properties of
-    // undefined (reading 'getBounds')") — se oculta su UI nativa porque
-    // el botón real vive en el JSX de abajo.
-    controlGuardado.addTo(mapa);
-    const controlElemento = (controlGuardado as unknown as { getContainer: () => HTMLElement }).getContainer();
-    controlElemento.style.display = "none";
-    saveControlRef.current = controlGuardado;
-
-    capaBase.on("savestart", (e) => {
-      setDescargando(true);
-      // @ts-expect-error -- leaflet.offline's savestart event carries _tilesforSave, undocumented in the type.
-      setProgreso({ actual: 0, total: e._tilesforSave.length });
-    });
-    capaBase.on("loadtileend", () => {
-      setProgreso((p) => {
-        const actual = p.actual + 1;
-        if (actual >= p.total) {
-          setDescargando(false);
-          getStorageLength()
-            .then(setTilesGuardados)
-            .catch(() => {});
-        }
-        return { ...p, actual };
-      });
-    });
-
     return () => {
       mapa.remove();
       mapaRef.current = null;
-      saveControlRef.current = null;
+      capasRef.current = null;
+      controlesRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const cambiarBasemap = (tipo: Basemap) => {
+    if (tipo === basemap || !mapaRef.current || !capasRef.current) return;
+    const mapa = mapaRef.current;
+    const capas = capasRef.current;
+    if (mapa.hasLayer(capas[basemap])) mapa.removeLayer(capas[basemap]);
+    capas[tipo].addTo(mapa);
+    // La capa base va siempre atrás — Leaflet apila por orden de adición.
+    capas[tipo].bringToBack();
+    setBasemap(tipo);
+  };
+
   const descargarZona = () => {
-    saveControlRef.current?._saveTiles();
+    controlesRef.current?.[basemap]._saveTiles();
   };
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex overflow-hidden rounded-md border border-border">
+          <button
+            type="button"
+            onClick={() => cambiarBasemap("satelital")}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold transition-colors",
+              basemap === "satelital" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+            )}
+          >
+            <Satellite className="h-3.5 w-3.5" />
+            Satelital
+          </button>
+          <button
+            type="button"
+            onClick={() => cambiarBasemap("calles")}
+            className={cn(
+              "inline-flex items-center gap-1.5 border-l border-border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+              basemap === "calles" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+            )}
+          >
+            <MapIcon className="h-3.5 w-3.5" />
+            Calles
+          </button>
+        </div>
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-bold",
