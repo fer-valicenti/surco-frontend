@@ -12,6 +12,7 @@ import { SyncProvider } from "@/lib/sync-store";
 import { EquipoProvider } from "@/lib/equipo-store";
 import { CalibracionesProvider } from "@/lib/calibraciones-store";
 import { AuthProvider, useAuth } from "@/lib/auth-store";
+import { VerificarEmailBanner } from "@/components/surco/verificar-email-banner";
 
 function NotFoundComponent() {
   return (
@@ -82,7 +83,9 @@ function AuthGate({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
 
-  const publica = pathname === "/login" || pathname === "/onboarding";
+  const publica = ["/login", "/onboarding", "/recuperar-password", "/restablecer-password", "/verificar-email"].includes(
+    pathname,
+  );
 
   useEffect(() => {
     if (!cargando && !autenticado && !publica) {
@@ -94,7 +97,12 @@ function AuthGate({ children }: { children: ReactNode }) {
   // nada — evita un parpadeo a /login para una sesión que en realidad es válida.
   if (cargando && !publica) return null;
   if (!autenticado && !publica) return null;
-  return <>{children}</>;
+  return (
+    <>
+      <VerificarEmailBanner />
+      {children}
+    </>
+  );
 }
 
 function RootComponent() {

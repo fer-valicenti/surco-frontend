@@ -102,11 +102,7 @@ function LoginPage() {
           </label>
           <button
             type="button"
-            onClick={() =>
-              toast("Recuperación de contraseña", {
-                description: "Pedile a un administrador del establecimiento que te reenvíe una invitación.",
-              })
-            }
+            onClick={() => navigate({ to: "/recuperar-password" })}
             className="text-[11.5px] font-semibold text-primary"
           >
             ¿Olvidaste tu contraseña?

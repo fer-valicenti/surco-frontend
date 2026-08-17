@@ -6,6 +6,7 @@ export interface UsuarioSesion {
   id: string;
   nombre: string;
   email: string;
+  emailVerificadoEn: string | null;
 }
 
 export interface EstablecimientoActual {
@@ -27,6 +28,21 @@ interface AuthContextValue {
   registrar: (nombre: string, email: string, password: string, recordar: boolean) => Promise<ResultadoAuth>;
   logout: () => void;
   recargarEstablecimiento: () => Promise<void>;
+  solicitarRecuperacion: (email: string) => Promise<ResultadoAuth>;
+  restablecerPassword: (token: string, nuevaPassword: string) => Promise<ResultadoAuth>;
+  verificarEmail: (token: string) => Promise<ResultadoAuth>;
+  reenviarVerificacion: () => Promise<ResultadoAuth>;
+}
+
+// Centraliza el caso 429 — @nestjs/throttler en el backend (ver
+// CLAUDE.md §13 del backend) responde igual para login/register/
+// forgot-password/resend-verification, así que todos los métodos de
+// este store reusan el mismo mensaje amigable.
+function mensajeDeError(e: unknown): string {
+  if (e instanceof ApiError && e.status === 429) {
+    return "Demasiados intentos. Esperá un minuto e intentá de nuevo.";
+  }
+  return e instanceof ApiError ? e.message : "No se pudo conectar con el servidor";
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -91,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await cargarEstablecimiento();
       return { ok: true };
     } catch (e) {
-      return { ok: false, error: e instanceof ApiError ? e.message : "No se pudo conectar con el servidor" };
+      return { ok: false, error: mensajeDeError(e) };
     }
   };
 
@@ -103,7 +119,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await cargarEstablecimiento();
       return { ok: true };
     } catch (e) {
-      return { ok: false, error: e instanceof ApiError ? e.message : "No se pudo conectar con el servidor" };
+      return { ok: false, error: mensajeDeError(e) };
+    }
+  };
+
+  const solicitarRecuperacion: AuthContextValue["solicitarRecuperacion"] = async (email) => {
+    try {
+      await api.post("/auth/forgot-password", { email }, { sinAuth: true });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: mensajeDeError(e) };
+    }
+  };
+
+  const restablecerPassword: AuthContextValue["restablecerPassword"] = async (token, nuevaPassword) => {
+    try {
+      await api.post("/auth/reset-password", { token, nuevaPassword }, { sinAuth: true });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: mensajeDeError(e) };
+    }
+  };
+
+  const verificarEmail: AuthContextValue["verificarEmail"] = async (token) => {
+    try {
+      await api.post("/auth/verify-email", { token }, { sinAuth: true });
+      // Si ya había sesión activa en esta pestaña, refresca el flag sin
+      // recargar la página — así el banner desaparece solo.
+      if (usuario) {
+        const me = await api.get<UsuarioSesion>("/auth/me");
+        setUsuario(me);
+      }
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: mensajeDeError(e) };
+    }
+  };
+
+  const reenviarVerificacion: AuthContextValue["reenviarVerificacion"] = async () => {
+    try {
+      await api.post("/auth/resend-verification");
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: mensajeDeError(e) };
     }
   };
 
@@ -128,6 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registrar,
         logout,
         recargarEstablecimiento: cargarEstablecimiento,
+        solicitarRecuperacion,
+        restablecerPassword,
+        verificarEmail,
+        reenviarVerificacion,
       }}
     >
       {children}
