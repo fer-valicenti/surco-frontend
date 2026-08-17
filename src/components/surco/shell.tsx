@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ClipboardList,
@@ -10,14 +10,8 @@ import {
   Beef,
   Library,
   Users,
-  Wifi,
-  WifiOff,
-  RefreshCw,
-  CloudOff,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { BandejaBadge } from "@/components/surco/bandeja-badge";
 import { useAuth } from "@/lib/auth-store";
 
@@ -60,24 +54,6 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { usuario, logout } = useAuth();
-  const [online, setOnline] = useState(true);
-  const [pendientes, setPendientes] = useState(7);
-  const [sincronizando, setSincronizando] = useState(false);
-
-  const sincronizar = () => {
-    if (!online) {
-      toast.error("Sin conexión", {
-        description: "Los cambios quedan en la cola local y se reintenta con backoff.",
-      });
-      return;
-    }
-    setSincronizando(true);
-    setTimeout(() => {
-      setSincronizando(false);
-      setPendientes(0);
-      toast.success("Sincronización completa", { description: "Push y pull confirmados." });
-    }, 1200);
-  };
 
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
 
@@ -108,58 +84,43 @@ export function AppShell({
             );
           })}
         </nav>
-        <div className="space-y-3 border-t border-sidebar-border px-4 py-4">
-          <div className="flex items-center justify-between gap-2 px-1 text-xs text-sidebar-foreground/80">
-            <span className="truncate font-semibold">{usuario?.nombre ?? "Invitado"}</span>
-            <div className="flex shrink-0 items-center gap-1">
-              <Link
-                to="/catalogos"
-                aria-label="Catálogos"
-                className="rounded-sm p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              >
-                <Library className="h-3.5 w-3.5" />
-              </Link>
-              <Link
-                to="/equipo"
-                aria-label="Equipo del establecimiento"
-                className="rounded-sm p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              >
-                <Users className="h-3.5 w-3.5" />
-              </Link>
-              <BandejaBadge className="rounded-sm p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
-              <button
-                onClick={() => {
-                  logout();
-                  navigate({ to: "/login" });
-                }}
-                aria-label="Cerrar sesión"
-                className="rounded-sm p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-              </button>
-            </div>
+        <div className="border-t border-sidebar-border px-3 py-4">
+          <p className="truncate px-2 pb-2 text-xs font-semibold text-sidebar-foreground/80">
+            {usuario?.nombre ?? "Invitado"}
+          </p>
+          <div className="space-y-0.5">
+            <Link
+              to="/catalogos"
+              className="flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-xs font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <Library className="h-3.5 w-3.5 shrink-0" />
+              Catálogos
+            </Link>
+            <Link
+              to="/equipo"
+              className="flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-xs font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              Equipo del establecimiento
+            </Link>
+            <Link
+              to="/sync"
+              className="flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-xs font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <BandejaBadge asIcon className="h-3.5 w-3.5 shrink-0" />
+              Bandeja de revisión
+            </Link>
+            <button
+              onClick={() => {
+                logout();
+                navigate({ to: "/login" });
+              }}
+              className="flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-xs font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <LogOut className="h-3.5 w-3.5 shrink-0" />
+              Cerrar sesión
+            </button>
           </div>
-          <button
-            onClick={() => setOnline((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 rounded-sm bg-sidebar-accent px-3 py-2 text-xs font-semibold text-sidebar-accent-foreground"
-          >
-            <span className="flex items-center gap-2">
-              {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-              {online ? "Con señal" : "Sin señal"}
-            </span>
-            <span className="text-sidebar-foreground/50">cambiar</span>
-          </button>
-          <div className="flex items-center justify-between text-xs text-sidebar-foreground/70">
-            <span className="flex items-center gap-1.5">
-              <CloudOff className="h-3.5 w-3.5" />
-              cola local
-            </span>
-            <span className="num">{pendientes}</span>
-          </div>
-          <Button variant="secondary" size="sm" className="w-full" onClick={sincronizar}>
-            <RefreshCw className={cn("h-4 w-4", sincronizando && "animate-spin")} />
-            Sincronizar ahora
-          </Button>
         </div>
       </aside>
 
@@ -173,25 +134,6 @@ export function AppShell({
         <Marca compact />
         <div className="flex shrink-0 items-center gap-2">
           <BandejaBadge className="grid h-9 w-9 place-items-center rounded-sm bg-sidebar-accent text-sidebar-accent-foreground" />
-          <button
-            onClick={() => setOnline((v) => !v)}
-            aria-label="Alternar conectividad"
-            className="grid h-9 w-9 place-items-center rounded-sm bg-sidebar-accent text-sidebar-accent-foreground"
-          >
-            {online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-          </button>
-          <button
-            onClick={sincronizar}
-            aria-label="Sincronizar ahora"
-            className="relative grid h-9 w-9 place-items-center rounded-sm bg-sidebar-primary text-sidebar-primary-foreground"
-          >
-            <RefreshCw className={cn("h-4 w-4", sincronizando && "animate-spin")} />
-            {pendientes > 0 ? (
-              <span className="num absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                {pendientes}
-              </span>
-            ) : null}
-          </button>
         </div>
       </header>
 
