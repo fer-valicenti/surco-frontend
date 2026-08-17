@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 import { tileLayerOffline, savetiles, getStorageLength, type TileLayerOffline, type ControlSaveTiles } from "leaflet.offline";
-import { CloudDownload, Satellite, Map as MapIcon, Wifi, WifiOff } from "lucide-react";
+import { CloudDownload, LocateFixed, Satellite, Map as MapIcon, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { areaHa, seSuperponen } from "@/lib/geo";
 import type { Poligono } from "@/lib/surco-data";
@@ -64,11 +64,15 @@ export function MapaEditorPoligono({
   const mapaRef = useRef<L.Map | null>(null);
   const capasRef = useRef<Record<Basemap, TileLayerOffline> | null>(null);
   const controlesRef = useRef<Record<Basemap, ControlSaveTiles> | null>(null);
+  const marcadorUbicacionRef = useRef<L.CircleMarker | null>(null);
+  const circuloPrecisionRef = useRef<L.Circle | null>(null);
+  const primeraUbicacionRef = useRef(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [basemap, setBasemap] = useState<Basemap>("satelital");
   const [descargando, setDescargando] = useState(false);
   const [progreso, setProgreso] = useState({ actual: 0, total: 0 });
   const [tilesGuardados, setTilesGuardados] = useState<number | null>(null);
+  const [ubicacionDisponible, setUbicacionDisponible] = useState(false);
 
   useEffect(() => {
     const marcarOnline = () => setOnline(true);
@@ -195,14 +199,60 @@ export function MapaEditorPoligono({
       emitirCambio(capaActual);
     });
 
+    // Ubicación en vivo del dispositivo — punto azul tipo "estás acá" que
+    // se actualiza solo, para ubicarse en el campo mientras se camina el
+    // perímetro. Solo la primera lectura recentra el mapa; las siguientes
+    // actualizan el punto sin mover la vista (si no, cada corrección de GPS
+    // te saca del lugar que estabas mirando/dibujando).
+    mapa.on("locationfound", (e) => {
+      setUbicacionDisponible(true);
+      if (!marcadorUbicacionRef.current) {
+        circuloPrecisionRef.current = L.circle(e.latlng, {
+          radius: e.accuracy,
+          color: "#2B6CB0",
+          fillColor: "#2B6CB0",
+          fillOpacity: 0.12,
+          weight: 1,
+          interactive: false,
+        }).addTo(mapa);
+        marcadorUbicacionRef.current = L.circleMarker(e.latlng, {
+          radius: 7,
+          color: "#FFFFFF",
+          weight: 2,
+          fillColor: "#2B6CB0",
+          fillOpacity: 1,
+          interactive: false,
+        }).addTo(mapa);
+      } else {
+        marcadorUbicacionRef.current.setLatLng(e.latlng);
+        circuloPrecisionRef.current?.setLatLng(e.latlng).setRadius(e.accuracy);
+      }
+      if (!primeraUbicacionRef.current) {
+        primeraUbicacionRef.current = true;
+        mapa.setView(e.latlng, zoom);
+      }
+    });
+    mapa.on("locationerror", () => setUbicacionDisponible(false));
+    mapa.locate({ watch: true, enableHighAccuracy: true, setView: false });
+
     return () => {
+      mapa.stopLocate();
       mapa.remove();
       mapaRef.current = null;
       capasRef.current = null;
       controlesRef.current = null;
+      marcadorUbicacionRef.current = null;
+      circuloPrecisionRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const centrarEnMiUbicacion = () => {
+    const mapa = mapaRef.current;
+    const marcador = marcadorUbicacionRef.current;
+    if (!mapa || !marcador) return;
+    mapa.setView(marcador.getLatLng(), Math.max(mapa.getZoom(), zoom));
+  };
 
   const cambiarBasemap = (tipo: Basemap) => {
     if (tipo === basemap || !mapaRef.current || !capasRef.current) return;
@@ -265,11 +315,23 @@ export function MapaEditorPoligono({
           {descargando ? `Descargando ${progreso.actual}/${progreso.total}` : "Guardar zona offline"}
         </button>
       </div>
-      {/* isolate: mismo motivo que mapa-mini.tsx — contiene los z-index internos de Leaflet (400+) dentro de esta card. */}
-      <div
-        ref={contenedorRef}
-        className={cn("isolate w-full overflow-hidden rounded-md border border-border", claseAltura)}
-      />
+      <div className="relative">
+        {/* isolate: mismo motivo que mapa-mini.tsx — contiene los z-index internos de Leaflet (400+) dentro de esta card. */}
+        <div
+          ref={contenedorRef}
+          className={cn("isolate w-full overflow-hidden rounded-md border border-border", claseAltura)}
+        />
+        {ubicacionDisponible ? (
+          <button
+            type="button"
+            onClick={centrarEnMiUbicacion}
+            aria-label="Centrar en mi ubicación"
+            className="absolute bottom-2.5 right-2.5 z-[1000] grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
+          >
+            <LocateFixed className="h-4 w-4 text-[#2B6CB0]" />
+          </button>
+        ) : null}
+      </div>
       {tilesGuardados !== null ? (
         <p className="text-[11px] text-muted-foreground">{tilesGuardados} tiles guardados en este dispositivo.</p>
       ) : null}
