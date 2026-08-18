@@ -57,14 +57,28 @@ interface ClimaContextValue {
 
 const ClimaContext = createContext<ClimaContextValue | null>(null);
 
+/** Mismo patrón "mejor esfuerzo" que scouting-store.tsx: nunca rechaza, resuelve null si no hay GPS o el usuario lo deniega. */
+function obtenerPosicionGps(): Promise<{ lat: number; lon: number } | null> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  });
+}
+
 /**
  * Clima vía Open-Meteo (sin API key, CORS habilitado) — primera llamada
  * directa a una API externa desde este frontend, no pasa por el backend de
- * Surco. Ubicación resuelta geocodificando partido/provincia (no se pide
- * permiso de geolocalización: ese prompt es contextual en el resto de la
- * app — ver scouting/ordenes — y acá el widget aparece solo, sin que el
- * usuario dispare la acción). Si falla el geocoding o el forecast, `clima`
- * queda en null — el widget lo trata como "no disponible", nunca como error.
+ * Surco. Ubicación: GPS del dispositivo primero (más preciso, esencial en
+ * mobile); si no hay GPS o el usuario lo deniega, cae a geocodificar
+ * partido/provincia del establecimiento. Si ambas fallan, `clima` queda en
+ * null — el widget lo trata como "no disponible", nunca como error.
  */
 export function ClimaProvider({ children }: { children: ReactNode }) {
   const { establecimiento } = useAuth();
@@ -73,18 +87,27 @@ export function ClimaProvider({ children }: { children: ReactNode }) {
   const coordenadasRef = useRef<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
-    if (!establecimiento?.partido) {
+    if (!establecimiento) {
       setCargando(false);
       return;
     }
 
     let cancelado = false;
+    coordenadasRef.current = null;
 
     const resolverCoordenadas = async () => {
       if (coordenadasRef.current) return coordenadasRef.current;
+
+      const gps = await obtenerPosicionGps();
+      if (gps) {
+        coordenadasRef.current = gps;
+        return gps;
+      }
+
+      if (!establecimiento.partido) throw new Error("sin GPS ni partido para ubicar");
       const nombre = establecimiento.provincia
         ? `${establecimiento.partido}, ${establecimiento.provincia}`
-        : establecimiento.partido!;
+        : establecimiento.partido;
       const url = new URL(URL_GEOCODING);
       url.searchParams.set("name", nombre);
       url.searchParams.set("count", "1");
@@ -134,7 +157,7 @@ export function ClimaProvider({ children }: { children: ReactNode }) {
       cancelado = true;
       clearInterval(intervalo);
     };
-  }, [establecimiento?.partido, establecimiento?.provincia]);
+  }, [establecimiento?.id]);
 
   return <ClimaContext.Provider value={{ clima, cargando }}>{children}</ClimaContext.Provider>;
 }
