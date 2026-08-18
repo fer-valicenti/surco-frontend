@@ -17,7 +17,7 @@ import { useAuth } from "@/lib/auth-store";
 
 const NAV = [
   { to: "/", label: "Panel", icon: LayoutDashboard },
-  { to: "/lotes", label: "Lotes", icon: MapPinned },
+  { to: "/lotes", label: "Parcelas", icon: MapPinned },
   { to: "/ordenes", label: "Órdenes", icon: ClipboardList },
   { to: "/scouting", label: "Scouting", icon: Leaf },
   { to: "/ganaderia", label: "Ganadería", icon: Beef },

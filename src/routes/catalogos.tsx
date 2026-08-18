@@ -18,17 +18,14 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapaEditorPoligono } from "@/components/surco/mapa-editor";
 import { MapaMiniPoligono } from "@/components/surco/mapa-mini";
 import { useCatalogos } from "@/lib/catalogos-store";
-import { centroide } from "@/lib/geo";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-store";
 import { nf, puedeGestionar } from "@/lib/surco-data";
 import type {
   EstadoPotrero,
   MetodoCuantificacion,
-  Poligono,
   TipoHallazgo,
   TipoMaquina,
   TipoInsumo,
@@ -447,113 +444,11 @@ function TabInsumos() {
 /* --------------------------------- potreros --------------------------------- */
 
 function TabPotreros() {
-  const { establecimiento } = useAuth();
-  const { potreros, agregarPotrero } = useCatalogos();
-  const [abierto, setAbierto] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [estado, setEstado] = useState<EstadoPotrero>("disponible");
-  const [carga, setCarga] = useState("");
-  const [poligono, setPoligono] = useState<Poligono | null>(null);
-  const [superficie, setSuperficie] = useState(0);
-  const [superpuestos, setSuperpuestos] = useState<{ id: string; nombre: string; puntos: Poligono }[]>([]);
-
-  const centroMapa = centroide(potreros.flatMap((p) => p.poligono));
-
-  const crear = async () => {
-    if (!nombre.trim() || !Number(carga) || !poligono || poligono.length < 3) {
-      toast.error("Completá nombre, carga recomendada y el polígono");
-      return;
-    }
-    if (superpuestos.length > 0) {
-      toast.error("El polígono se superpone", { description: superpuestos.map((s) => s.nombre).join(", ") });
-      return;
-    }
-    try {
-      await agregarPotrero({
-        nombre: nombre.trim(),
-        superficieHa: superficie,
-        poligono,
-        estado,
-        cargaRecomendadaEvHa: Number(carga),
-      });
-      setAbierto(false);
-      setNombre("");
-      setCarga("");
-      setPoligono(null);
-      setSuperficie(0);
-      toast.success("Potrero agregado al catálogo");
-    } catch (e) {
-      toast.error(mensajeError(e, "No se pudo guardar el potrero"));
-    }
-  };
+  const { potreros } = useCatalogos();
 
   return (
     <section className="space-y-3">
-      <SectionLabel
-        aside={
-          puedeGestionar(establecimiento?.rol) ? (
-          <Dialog open={abierto} onOpenChange={setAbierto}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4" /> Nuevo potrero</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Nuevo potrero</DialogTitle>
-                <DialogDescription>Queda disponible al instante para mover rodeos en Ganadería.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="pot-nombre">Nombre</Label>
-                    <Input id="pot-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Potrero Las Acacias" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pot-carga">Carga recomendada (EV/ha)</Label>
-                    <Input id="pot-carga" inputMode="decimal" value={carga} onChange={(e) => setCarga(e.target.value)} placeholder="1,10" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Estado</Label>
-                  <Select value={estado} onValueChange={(v) => setEstado(v as EstadoPotrero)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(ETIQUETA_ESTADO_POTRERO) as EstadoPotrero[]).map((e) => (
-                        <SelectItem key={e} value={e}>{ETIQUETA_ESTADO_POTRERO[e]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Polígono</Label>
-                  <MapaEditorPoligono
-                    centro={centroMapa}
-                    poligonosExistentes={potreros.map((p) => ({ id: p.id, nombre: p.nombre, puntos: p.poligono }))}
-                    onCambio={(puntos, ha, sup) => {
-                      setPoligono(puntos);
-                      setSuperficie(ha);
-                      setSuperpuestos(sup);
-                    }}
-                  />
-                  {poligono ? (
-                    <p className="num text-sm text-foreground">
-                      {nf(superficie)} ha calculadas
-                      {superpuestos.length > 0 ? (
-                        <span className="ml-2 inline-flex items-center gap-1 text-destructive">
-                          <AlertTriangle className="h-3.5 w-3.5" /> se superpone con {superpuestos.map((s) => s.nombre).join(", ")}
-                        </span>
-                      ) : null}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={crear}>Guardar potrero</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          ) : null
-        }
-      >
+      <SectionLabel aside="Creá potreros nuevos desde Parcelas">
         {potreros.length} potreros
       </SectionLabel>
       <ul className="divide-y divide-border rounded-md border border-border bg-card">
