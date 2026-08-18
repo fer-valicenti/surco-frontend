@@ -2,7 +2,7 @@
 // almacenamiento de tokens, adjunta el Authorization header, y reintenta
 // una vez con refresh token ante un 401 antes de rendirse.
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/v1";
+export const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/v1";
 const STORAGE_KEY = "surco.tokens";
 
 export interface Tokens {
@@ -112,13 +112,18 @@ function construirUrl(path: string, params?: Opciones["params"]) {
 async function ejecutar<T>(path: string, opciones: Opciones, tokenOverride?: string): Promise<T> {
   const tokens = leerTokens();
   const token = tokenOverride ?? tokens?.accessToken;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  // FormData (subida de fotos, ver ScoutingProvider): el browser arma el
+  // Content-Type con el boundary del multipart solo — si lo seteamos acá
+  // a mano queda sin boundary y el backend no puede parsear el body.
+  const esFormData = opciones.body instanceof FormData;
+  const headers: Record<string, string> = {};
+  if (!esFormData) headers["Content-Type"] = "application/json";
   if (token && !opciones.sinAuth) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(construirUrl(path, opciones.params), {
     method: opciones.method ?? "GET",
     headers,
-    body: opciones.body !== undefined ? JSON.stringify(opciones.body) : undefined,
+    body: opciones.body === undefined ? undefined : esFormData ? (opciones.body as FormData) : JSON.stringify(opciones.body),
   });
 
   if (res.status === 401 && !opciones.sinAuth && tokens) {

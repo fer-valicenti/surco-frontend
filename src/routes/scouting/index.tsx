@@ -10,12 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ApiError } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-store";
 import { useScouting } from "@/lib/scouting-store";
 import { useCatalogos } from "@/lib/catalogos-store";
 import { useLotes } from "@/lib/lotes-store";
 import { cn } from "@/lib/utils";
+import { FotoAutenticada } from "@/components/surco/foto-autenticada";
 import {
   Select,
   SelectContent,
@@ -68,6 +69,51 @@ function mensajeError(e: unknown, fallback: string) {
   return e instanceof ApiError || e instanceof Error ? e.message : fallback;
 }
 
+/** Se usa desde el desktop y el mobile — cada uno con su propio estado de "cuál está abierta". */
+function DialogoFotos({
+  registroId,
+  open,
+  onOpenChange,
+}: {
+  registroId: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [fotos, setFotos] = useState<{ id: string }[] | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setFotos(null);
+      return;
+    }
+    api
+      .get<{ id: string }[]>(`/scouting/${registroId}/fotos`)
+      .then(setFotos)
+      .catch(() => setFotos([]));
+  }, [open, registroId]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Fotos del hallazgo</DialogTitle>
+        </DialogHeader>
+        {fotos === null ? (
+          <p className="text-sm text-muted-foreground">Cargando…</p>
+        ) : fotos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin fotos.</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {fotos.map((f) => (
+              <FotoAutenticada key={f.id} fotoId={f.id} className="aspect-square w-full rounded-md" />
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ScoutingPage() {
   const isMobile = useIsMobile();
   const { establecimiento } = useAuth();
@@ -85,6 +131,7 @@ function ScoutingPage() {
   const [resolviendo, setResolviendo] = useState<RegistroScouting | null>(null);
   const [especieResolver, setEspecieResolver] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [galeriaAbiertaPara, setGaleriaAbiertaPara] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loteId && lotes.length) setLoteId(lotes[0]!.id);
@@ -118,14 +165,19 @@ function ScoutingPage() {
     }
     setEnviando(true);
     try {
-      await guardarCtx({
-        loteId,
-        especieId,
-        descripcionLibre: null,
-        valorMedido: Number(valor),
-        metodoCuantificacion: especie.metodo,
-        sospechaResistencia: resistencia,
-      });
+      // Sin captura de fotos acá a propósito — es el alta rápida de
+      // escritorio; el flujo completo con fotos vive en /scouting/nuevo.
+      await guardarCtx(
+        {
+          loteId,
+          especieId,
+          descripcionLibre: null,
+          valorMedido: Number(valor),
+          metodoCuantificacion: especie.metodo,
+          sospechaResistencia: resistencia,
+        },
+        [],
+      );
       setAbierto(false);
       setValor("");
       setResistencia(false);
@@ -372,7 +424,17 @@ function ScoutingPage() {
 
                   <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
                     <Camera className="h-4 w-4 shrink-0" />
-                    {r.fotos} foto{r.fotos === 1 ? "" : "s"}
+                    {r.fotos > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setGaleriaAbiertaPara(r.id)}
+                        className="font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        {r.fotos} foto{r.fotos === 1 ? "" : "s"}
+                      </button>
+                    ) : (
+                      <span>Sin fotos</span>
+                    )}
                   </div>
                 </article>
               );
@@ -414,6 +476,11 @@ function ScoutingPage() {
         </div>
       </section>
       {resolverDialog}
+      <DialogoFotos
+        registroId={galeriaAbiertaPara ?? ""}
+        open={galeriaAbiertaPara !== null}
+        onOpenChange={(v) => !v && setGaleriaAbiertaPara(null)}
+      />
     </AppShell>
   );
 }
@@ -448,6 +515,7 @@ function MobileScoutingList({
   const { especies } = useCatalogos();
   const { lotes } = useLotes();
   const nombreLote = (id: string) => lotes.find((l) => l.id === id)?.nombre ?? id;
+  const [galeriaAbiertaPara, setGaleriaAbiertaPara] = useState<string | null>(null);
   return (
     <div className="-mx-4 -mt-5 sm:-mx-6">
       <div className="px-5 pt-5">
@@ -549,13 +617,29 @@ function MobileScoutingList({
 
                 <div className="mt-2.5 flex items-center gap-1.5 border-t border-border pt-2.5 text-[11px] text-muted-foreground">
                   <Camera className="h-3.5 w-3.5 shrink-0" />
-                  {r.fotos} foto{r.fotos === 1 ? "" : "s"} · {r.fotosPendientes} sin subir
+                  {r.fotos > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setGaleriaAbiertaPara(r.id)}
+                      className="font-semibold text-primary underline-offset-2 hover:underline"
+                    >
+                      {r.fotos} foto{r.fotos === 1 ? "" : "s"}
+                    </button>
+                  ) : (
+                    <span>Sin fotos</span>
+                  )}
+                  {r.fotosPendientes > 0 ? <span>· {r.fotosPendientes} sin subir</span> : null}
                 </div>
               </div>
             );
           })
         )}
       </div>
+      <DialogoFotos
+        registroId={galeriaAbiertaPara ?? ""}
+        open={galeriaAbiertaPara !== null}
+        onOpenChange={(v) => !v && setGaleriaAbiertaPara(null)}
+      />
     </div>
   );
 }

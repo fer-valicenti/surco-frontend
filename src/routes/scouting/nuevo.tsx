@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Camera, LocateFixed, Minus, Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, ArrowLeft, Camera, LocateFixed, Minus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +40,30 @@ function NuevoHallazgo() {
   const [resistencia, setResistencia] = useState(false);
   const [descripcionLibre, setDescripcionLibre] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [fotos, setFotos] = useState<{ file: File; preview: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Revoca los blob: URLs de preview al desmontar — no antes, porque
+    // se siguen mostrando mientras la persona sigue en esta pantalla.
+    return () => {
+      fotos.forEach((f) => URL.revokeObjectURL(f.preview));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const agregarFotos = (archivos: FileList | null) => {
+    if (!archivos) return;
+    const nuevas = Array.from(archivos).map((file) => ({ file, preview: URL.createObjectURL(file) }));
+    setFotos((prev) => [...prev, ...nuevas]);
+  };
+
+  const quitarFoto = (index: number) => {
+    setFotos((prev) => {
+      URL.revokeObjectURL(prev[index]!.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   const [estadoGps, setEstadoGps] = useState<EstadoGps>("buscando");
   const [posicion, setPosicion] = useState<{ lat: number; lng: number } | null>(null);
@@ -93,20 +117,28 @@ function NuevoHallazgo() {
     }
     setEnviando(true);
     try {
-      await guardar({
-        loteId: loteDetectado.id,
-        especieId: especieId === "otra" ? null : especieId,
-        descripcionLibre: especieId === "otra" ? descripcionLibre.trim() : null,
-        valorMedido: cobertura,
-        metodoCuantificacion: especie?.metodo ?? "cobertura",
-        sospechaResistencia: resistencia,
-      });
+      const { fotosFallidas } = await guardar(
+        {
+          loteId: loteDetectado.id,
+          especieId: especieId === "otra" ? null : especieId,
+          descripcionLibre: especieId === "otra" ? descripcionLibre.trim() : null,
+          valorMedido: cobertura,
+          metodoCuantificacion: especie?.metodo ?? "cobertura",
+          sospechaResistencia: resistencia,
+        },
+        fotos.map((f) => f.file),
+      );
       toast.success("Hallazgo registrado", {
         description:
           especieId === "otra"
             ? "Sin match en el catálogo — queda marcado para revisión."
             : "Guardado correctamente.",
       });
+      if (fotosFallidas > 0) {
+        toast.error(`${fotosFallidas} foto${fotosFallidas === 1 ? "" : "s"} no se pudo subir`, {
+          description: "El hallazgo se guardó igual — reintentá subir esa foto más adelante.",
+        });
+      }
       navigate({ to: "/scouting" });
     } catch (e) {
       toast.error("No se pudo registrar el hallazgo", { description: mensajeError(e, "Intentá de nuevo.") });
@@ -138,13 +170,53 @@ function NuevoHallazgo() {
                 ? "Buscando GPS…"
                 : "Ubicación no disponible"}
           </span>
-          <button
-            aria-label="Capturar foto"
-            className="grid h-14 w-14 place-items-center rounded-full border-4 border-white/70 bg-white/10 text-white active:scale-95"
-          >
-            <Camera className="h-6 w-6" />
-          </button>
+          {fotos.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Agregar foto"
+              className="grid h-14 w-14 place-items-center rounded-full border-4 border-white/70 bg-white/10 text-white active:scale-95"
+            >
+              <Camera className="h-6 w-6" />
+            </button>
+          ) : (
+            <div className="flex h-full w-full items-end gap-2 overflow-x-auto p-3">
+              {fotos.map((f, i) => (
+                <div key={i} className="relative shrink-0">
+                  <img src={f.preview} className="h-16 w-16 rounded-lg object-cover" alt="" />
+                  <button
+                    type="button"
+                    onClick={() => quitarFoto(i)}
+                    aria-label="Quitar foto"
+                    className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Agregar otra foto"
+                className="grid h-16 w-16 shrink-0 place-items-center rounded-lg border-2 border-dashed border-white/50 text-white"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
+          )}
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          onChange={(e) => {
+            agregarFotos(e.target.files);
+            e.target.value = "";
+          }}
+          className="hidden"
+        />
 
         {estadoGps === "dentro_de_lote" && loteDetectado ? (
           <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#E6F1E8] px-2.5 py-1 text-[11px] font-bold text-[#4C8F5B]">

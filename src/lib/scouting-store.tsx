@@ -68,7 +68,7 @@ function obtenerPosicion(): Promise<{ lat: number; lng: number } | null> {
 interface ScoutingContextValue {
   registros: RegistroScouting[];
   cargando: boolean;
-  guardar: (h: NuevoHallazgo) => Promise<void>;
+  guardar: (h: NuevoHallazgo, fotos: File[]) => Promise<{ fotosFallidas: number }>;
   resolver: (id: string, especieId: string) => Promise<void>;
 }
 
@@ -112,16 +112,17 @@ export function ScoutingProvider({ children }: { children: ReactNode }) {
     };
   }, [establecimiento, lotes, cargandoLotes]);
 
-  const guardar: ScoutingContextValue["guardar"] = async (h) => {
+  const guardar: ScoutingContextValue["guardar"] = async (h, fotos) => {
     const lote = lotes.find((l) => l.id === h.loteId);
     const gps = await obtenerPosicion();
     const posicion = gps ?? (lote ? { lat: centroide(lote.poligono)[0], lng: centroide(lote.poligono)[1] } : null);
     if (!posicion) throw new Error("No se pudo determinar una ubicación para el hallazgo");
 
+    const id = crypto.randomUUID();
     await api.post("/sync/push", {
       changes: [
         {
-          id: crypto.randomUUID(),
+          id,
           tabla: "registros_scouting",
           operacion: "create",
           version: 1,
@@ -141,8 +142,25 @@ export function ScoutingProvider({ children }: { children: ReactNode }) {
       ],
     });
 
+    // El hallazgo ya quedó guardado en el paso de arriba — una foto que
+    // no sube no lo invalida, solo se cuenta para que la pantalla avise
+    // (ver CLAUDE.md §15: sin cola offline, esto es "mejor esfuerzo").
+    let fotosFallidas = 0;
+    for (const archivo of fotos) {
+      try {
+        const formData = new FormData();
+        formData.append("archivo", archivo);
+        await api.post(`/scouting/${id}/fotos`, formData, {
+          params: { lat: posicion.lat, lon: posicion.lng, tomadaEn: new Date().toISOString() },
+        });
+      } catch {
+        fotosFallidas += 1;
+      }
+    }
+
     const porLote = await Promise.all(lotes.map((l) => api.get<RegistroApi[]>("/scouting", { loteId: l.id })));
     setRegistros(porLote.flat().map(registroDesdeApi));
+    return { fotosFallidas };
   };
 
   const resolver: ScoutingContextValue["resolver"] = async (id, especieId) => {
