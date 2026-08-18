@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRightLeft, ChevronRight, ClipboardCheck, Plus, Syringe } from "lucide-react";
+import { ArrowRightLeft, ClipboardCheck, Plus, Syringe } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/surco/shell";
 import { Chip, PageHeader, SectionLabel, Stat, SyncBadge } from "@/components/surco/bits";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-store";
 import { useGanaderia } from "@/lib/ganaderia-store";
@@ -75,7 +74,6 @@ function mensajeError(e: unknown, fallback: string) {
 }
 
 function GanaderiaPage() {
-  const isMobile = useIsMobile();
   const { establecimiento } = useAuth();
   const {
     rodeos,
@@ -201,14 +199,6 @@ function GanaderiaPage() {
       toast.error("No se pudo registrar el evento", { description: mensajeError(e, "Intentá de nuevo.") });
     }
   };
-
-  if (isMobile) {
-    return (
-      <AppShell>
-        <MobileRodeosList rodeos={rodeos} />
-      </AppShell>
-    );
-  }
 
   return (
     <AppShell>
@@ -618,58 +608,5 @@ function GanaderiaPage() {
         </DialogContent>
       </Dialog>
     </AppShell>
-  );
-}
-
-/**
- * Lista móvil de rodeos — tarjetas compactas que navegan al detalle
- * (/ganaderia/$id, ver surco_mobile_flujos_2.html screen 6).
- */
-function MobileRodeosList({ rodeos }: { rodeos: Rodeo[] }) {
-  const { categoriasGanado, potreros } = useCatalogos();
-  const nombrePotrero = (id: string | null) => (id ? (potreros.find((p) => p.id === id)?.nombre ?? id) : "Sin potrero");
-  return (
-    <div className="-mx-4 -mt-5 sm:-mx-6">
-      <div className="px-5 pt-5">
-        <h1 className="font-display text-xl font-semibold tracking-tight">Ganadería</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          {nfInt(rodeos.reduce((a, r) => a + cabezasDeRodeo(r), 0))} cabezas · {rodeos.length} rodeos
-        </p>
-      </div>
-
-      <div className="space-y-2.5 px-5 pt-4">
-        {rodeos.map((r) => {
-          const cat = r.categoriaId ? categoriasGanado.find((c) => c.id === r.categoriaId) : undefined;
-          const nombreCategoria = cat?.nombre ?? (r.categoriaSugerida ? `${r.categoriaSugerida} (sin confirmar)` : "Sin categoría");
-          const potrero = potreros.find((p) => p.id === r.potreroId);
-          const carga = potrero ? cargaDePotrero(potrero, rodeos, categoriasGanado) : null;
-          const excede = carga !== null && potrero ? carga > potrero.cargaRecomendadaEvHa : false;
-          return (
-            <Link
-              key={r.id}
-              to="/ganaderia/$id"
-              params={{ id: r.id }}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3.5 transition-colors active:border-foreground/20"
-            >
-              <div className="min-w-0 flex-1">
-                <strong className="block text-sm font-semibold text-foreground">{r.nombre}</strong>
-                <span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground">
-                  {nombreCategoria} · {nombrePotrero(r.potreroId)}
-                </span>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="num text-sm font-semibold text-foreground">{nfInt(cabezasDeRodeo(r))} cab.</span>
-                {carga !== null ? (
-                  <span className={`num text-[10.5px] ${excede ? "text-destructive" : "text-muted-foreground"}`}>
-                    {nf(carga, 2)} EV/ha
-                  </span>
-                ) : null}
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </Link>
-          );
-        })}
-      </div>
-    </div>
   );
 }

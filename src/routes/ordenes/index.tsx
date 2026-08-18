@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CheckCircle2,
   Clock,
@@ -161,6 +161,83 @@ export function OrdenesPage() {
     }
   };
 
+  const dialogoNuevaOrden = (trigger: ReactNode) => (
+    <Dialog open={nueva} onOpenChange={setNueva}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nueva orden de trabajo</DialogTitle>
+          <DialogDescription>La crea el agrónomo o el administrador con insumos planificados.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Lote</Label>
+              <Select value={loteId} onValueChange={setLoteId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {lotes.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Labor</Label>
+              <Select value={labor} onValueChange={(v) => setLabor(v as TipoLabor)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(etiquetaLabor) as TipoLabor[]).map((t) => (
+                    <SelectItem key={t} value={t}>{etiquetaLabor[t]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Insumo planificado</Label>
+              <Select value={insumoId} onValueChange={setInsumoId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {insumos.map((i) => (
+                    <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cant">
+              Cantidad planificada ({insumos.find((i) => i.id === insumoId)?.unidad})
+            </Label>
+            <Input id="cant" inputMode="decimal" value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="300" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={!loteId}
+            onClick={async () => {
+              const unidad = insumos.find((i) => i.id === insumoId)?.unidad ?? "l";
+              try {
+                const id = await crear({
+                  loteId,
+                  tipoLabor: labor,
+                  insumos: Number(cantidad) ? [{ insumoId, cantidad: Number(cantidad), unidad }] : [],
+                });
+                setNueva(false);
+                setCantidad("");
+                toast.success(`Orden ${id} creada`);
+              } catch (e) {
+                toast.error("No se pudo crear la orden", { description: mensajeError(e, "Intentá de nuevo.") });
+              }
+            }}
+          >
+            Crear orden
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (isMobile) {
     return (
       <AppShell>
@@ -171,6 +248,15 @@ export function OrdenesPage() {
           busqueda={busqueda}
           onBusqueda={setBusqueda}
           nombreLote={nombreLote}
+          nuevaOrden={
+            puedeGestionar(establecimiento?.rol)
+              ? dialogoNuevaOrden(
+                  <Button size="sm">
+                    <Plus className="h-4 w-4" /> Nueva orden
+                  </Button>,
+                )
+              : undefined
+          }
         />
       </AppShell>
     );
@@ -183,86 +269,13 @@ export function OrdenesPage() {
         title="Órdenes de trabajo"
         description="Ninguna transición se pisa: cada cambio de estado se agrega al historial con quién y cuándo."
         actions={
-          puedeGestionar(establecimiento?.rol) ? (
-          <Dialog open={nueva} onOpenChange={setNueva}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4" /> Nueva orden
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nueva orden de trabajo</DialogTitle>
-                <DialogDescription>La crea el agrónomo o el administrador con insumos planificados.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Lote</Label>
-                    <Select value={loteId} onValueChange={setLoteId}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {lotes.map((l) => (
-                          <SelectItem key={l.id} value={l.id}>{l.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Labor</Label>
-                    <Select value={labor} onValueChange={(v) => setLabor(v as TipoLabor)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(etiquetaLabor) as TipoLabor[]).map((t) => (
-                          <SelectItem key={t} value={t}>{etiquetaLabor[t]}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Insumo planificado</Label>
-                    <Select value={insumoId} onValueChange={setInsumoId}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {insumos.map((i) => (
-                          <SelectItem key={i.id} value={i.id}>{i.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cant">
-                    Cantidad planificada ({insumos.find((i) => i.id === insumoId)?.unidad})
-                  </Label>
-                  <Input id="cant" inputMode="decimal" value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="300" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  disabled={!loteId}
-                  onClick={async () => {
-                    const unidad = insumos.find((i) => i.id === insumoId)?.unidad ?? "l";
-                    try {
-                      const id = await crear({
-                        loteId,
-                        tipoLabor: labor,
-                        insumos: Number(cantidad) ? [{ insumoId, cantidad: Number(cantidad), unidad }] : [],
-                      });
-                      setNueva(false);
-                      setCantidad("");
-                      toast.success(`Orden ${id} creada`);
-                    } catch (e) {
-                      toast.error("No se pudo crear la orden", { description: mensajeError(e, "Intentá de nuevo.") });
-                    }
-                  }}
-                >
-                  Crear orden
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          ) : undefined
+          puedeGestionar(establecimiento?.rol)
+            ? dialogoNuevaOrden(
+                <Button>
+                  <Plus className="h-4 w-4" /> Nueva orden
+                </Button>,
+              )
+            : undefined
         }
       />
 
@@ -493,6 +506,7 @@ function MobileOrdenesList({
   busqueda,
   onBusqueda,
   nombreLote,
+  nuevaOrden,
 }: {
   ordenes: OrdenTrabajo[];
   filtro: "todas" | EstadoOrden;
@@ -500,11 +514,15 @@ function MobileOrdenesList({
   busqueda: string;
   onBusqueda: (v: string) => void;
   nombreLote: (id: string) => string;
+  nuevaOrden?: ReactNode;
 }) {
   return (
     <div className="-mx-4 -mt-5 sm:-mx-6">
       <div className="px-5 pt-5">
-        <h1 className="font-display text-xl font-semibold tracking-tight">Órdenes de trabajo</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="font-display text-xl font-semibold tracking-tight">Órdenes de trabajo</h1>
+          {nuevaOrden}
+        </div>
 
         <div className="mt-4 flex items-center gap-2 rounded-xl border-[1.4px] border-border bg-card px-3 py-2.5">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
