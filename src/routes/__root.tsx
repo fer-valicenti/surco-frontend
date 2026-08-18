@@ -11,6 +11,7 @@ import { GanaderiaProvider } from "@/lib/ganaderia-store";
 import { SyncProvider } from "@/lib/sync-store";
 import { EquipoProvider } from "@/lib/equipo-store";
 import { CalibracionesProvider } from "@/lib/calibraciones-store";
+import { ClimaProvider } from "@/lib/clima-store";
 import { AuthProvider, useAuth } from "@/lib/auth-store";
 import { VerificarEmailBanner } from "@/components/surco/verificar-email-banner";
 
@@ -111,27 +112,29 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <CatalogosProvider>
-          <CalibracionesProvider>
-            <LotesProvider>
-              <OrdenesProvider>
-                <ScoutingProvider>
-                  <GanaderiaProvider>
-                    <SyncProvider>
-                      <EquipoProvider>
-                        <AuthGate>
-                          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-                          <Outlet />
-                        </AuthGate>
-                        <Toaster />
-                      </EquipoProvider>
-                    </SyncProvider>
-                  </GanaderiaProvider>
-                </ScoutingProvider>
-              </OrdenesProvider>
-            </LotesProvider>
-          </CalibracionesProvider>
-        </CatalogosProvider>
+        <ClimaProvider>
+          <CatalogosProvider>
+            <CalibracionesProvider>
+              <LotesProvider>
+                <OrdenesProvider>
+                  <ScoutingProvider>
+                    <GanaderiaProvider>
+                      <SyncProvider>
+                        <EquipoProvider>
+                          <AuthGate>
+                            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+                            <Outlet />
+                          </AuthGate>
+                          <Toaster />
+                        </EquipoProvider>
+                      </SyncProvider>
+                    </GanaderiaProvider>
+                  </ScoutingProvider>
+                </OrdenesProvider>
+              </LotesProvider>
+            </CalibracionesProvider>
+          </CatalogosProvider>
+        </ClimaProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

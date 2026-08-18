@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BandejaBadge } from "@/components/surco/bandeja-badge";
+import { WidgetClima } from "@/components/surco/clima-widget";
 import { useAuth } from "@/lib/auth-store";
 
 const NAV = [
@@ -64,6 +65,7 @@ export function AppShell({
         <div className="border-b border-sidebar-border px-5 py-5">
           <Marca />
         </div>
+        <WidgetClima variant="sidebar" />
         <nav className="flex-1 space-y-1 px-3 py-4">
           {NAV.map((item) => {
             const Icon = item.icon;

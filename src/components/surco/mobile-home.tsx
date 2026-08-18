@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { WidgetClima } from "@/components/surco/clima-widget";
 import { useAuth } from "@/lib/auth-store";
 import { useOrdenes } from "@/lib/ordenes-store";
 import { useScouting } from "@/lib/scouting-store";
@@ -111,6 +112,7 @@ export function MobileHome() {
       </header>
 
       <main className="px-5 pt-5">
+        <WidgetClima variant="card" />
         <div className="mb-6 grid grid-cols-2 gap-2.5">
           <Link
             to="/ordenes"
