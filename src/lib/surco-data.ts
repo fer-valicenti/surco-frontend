@@ -171,9 +171,26 @@ export interface EventoSanitario {
   rodeoId: string;
   tipo: "vacunacion" | "desparasitacion" | "diagnostico" | "tratamiento";
   producto: string;
+  catalogoId: string | null;
   fecha: string;
   proximoRefuerzo: string | null;
 }
+
+export type TipoCatalogoSanitario = "vacuna" | "antiparasitario" | "enfermedad" | "medicamento";
+
+export interface ItemCatalogoSanitario {
+  id: string;
+  tipo: TipoCatalogoSanitario;
+  nombre: string;
+}
+
+/** Mismo mapeo que el backend (TIPO_EVENTO_A_CATALOGO) — filtra el Select de "Producto" según el tipo de evento. */
+export const TIPO_EVENTO_A_CATALOGO: Record<EventoSanitario["tipo"], TipoCatalogoSanitario> = {
+  vacunacion: "vacuna",
+  desparasitacion: "antiparasitario",
+  diagnostico: "enfermedad",
+  tratamiento: "medicamento",
+};
 
 export type TipoMaquina = "pulverizadora" | "sembradora" | "fertilizadora" | "cosechadora" | "tractor" | "otro";
 

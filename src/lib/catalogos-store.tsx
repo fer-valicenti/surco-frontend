@@ -13,6 +13,8 @@ import type {
   EstadoPotrero,
   TipoMaquina,
   TipoInsumo,
+  TipoCatalogoSanitario,
+  ItemCatalogoSanitario,
   Poligono,
 } from "@/lib/surco-data";
 
@@ -33,6 +35,7 @@ export type NuevaMaquina = {
   espaciamientoM: number | null;
 };
 export type NuevoInsumo = { nombre: string; tipo: TipoInsumo; unidad: string };
+export type NuevoItemCatalogoSanitario = { tipo: TipoCatalogoSanitario; nombre: string };
 export type NuevoPotrero = {
   nombre: string;
   superficieHa: number;
@@ -47,12 +50,14 @@ interface CatalogosContextValue {
   maquinas: Maquina[];
   insumos: Insumo[];
   potreros: Potrero[];
+  catalogoSanitario: ItemCatalogoSanitario[];
   cargando: boolean;
   agregarEspecie: (e: NuevaEspecie) => Promise<Especie>;
   agregarCategoriaGanado: (c: NuevaCategoriaGanado) => Promise<CategoriaGanado>;
   agregarMaquina: (m: NuevaMaquina) => Promise<Maquina>;
   agregarInsumo: (i: NuevoInsumo) => Promise<Insumo>;
   agregarPotrero: (p: NuevoPotrero) => Promise<Potrero>;
+  agregarItemCatalogoSanitario: (i: NuevoItemCatalogoSanitario) => Promise<ItemCatalogoSanitario>;
 }
 
 const CatalogosContext = createContext<CatalogosContextValue | null>(null);
@@ -127,6 +132,17 @@ const potreroDesdeApi = (p: PotreroApi): Potrero => ({
   cargaRecomendadaEvHa: p.cargaRecomendadaEvHa !== null ? Number(p.cargaRecomendadaEvHa) : 0,
 });
 
+interface ItemCatalogoSanitarioApi {
+  id: string;
+  tipo: TipoCatalogoSanitario;
+  nombre: string;
+}
+const itemCatalogoSanitarioDesdeApi = (i: ItemCatalogoSanitarioApi): ItemCatalogoSanitario => ({
+  id: i.id,
+  tipo: i.tipo,
+  nombre: i.nombre,
+});
+
 /**
  * Catálogos compartidos — conectado al backend real. Cada dominio se
  * carga al montar (una vez que hay establecimiento activo) y las altas
@@ -140,6 +156,7 @@ export function CatalogosProvider({ children }: { children: ReactNode }) {
   const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [potreros, setPotreros] = useState<Potrero[]>([]);
+  const [catalogoSanitario, setCatalogoSanitario] = useState<ItemCatalogoSanitario[]>([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -155,6 +172,9 @@ export function CatalogosProvider({ children }: { children: ReactNode }) {
       api.get<MaquinaApi[]>("/maquinas", { establecimientoId }).then((r) => setMaquinas(r.map(maquinaDesdeApi))),
       api.get<InsumoApi[]>("/insumos", { establecimientoId }).then((r) => setInsumos(r.map(insumoDesdeApi))),
       api.get<PotreroApi[]>("/potreros", { establecimientoId }).then((r) => setPotreros(r.map(potreroDesdeApi))),
+      api
+        .get<ItemCatalogoSanitarioApi[]>("/catalogo-sanitario", { establecimientoId })
+        .then((r) => setCatalogoSanitario(r.map(itemCatalogoSanitarioDesdeApi))),
     ]).finally(() => setCargando(false));
   }, [autenticado, establecimiento]);
 
@@ -210,6 +230,17 @@ export function CatalogosProvider({ children }: { children: ReactNode }) {
     return mapeado;
   };
 
+  const agregarItemCatalogoSanitario: CatalogosContextValue["agregarItemCatalogoSanitario"] = async (i) => {
+    const creado = await api.post<ItemCatalogoSanitarioApi>("/catalogo-sanitario", {
+      establecimientoId: establecimiento!.id,
+      tipo: i.tipo,
+      nombre: i.nombre,
+    });
+    const mapeado = itemCatalogoSanitarioDesdeApi(creado);
+    setCatalogoSanitario((prev) => [...prev, mapeado]);
+    return mapeado;
+  };
+
   const agregarPotrero: CatalogosContextValue["agregarPotrero"] = async (p) => {
     const creado = await api.post<PotreroApi>("/potreros", {
       establecimientoId: establecimiento!.id,
@@ -230,12 +261,14 @@ export function CatalogosProvider({ children }: { children: ReactNode }) {
         maquinas,
         insumos,
         potreros,
+        catalogoSanitario,
         cargando,
         agregarEspecie,
         agregarCategoriaGanado,
         agregarMaquina,
         agregarInsumo,
         agregarPotrero,
+        agregarItemCatalogoSanitario,
       }}
     >
       {children}

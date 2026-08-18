@@ -39,6 +39,7 @@ interface EventoSanitarioApi {
   rodeoId: string;
   tipo: EventoSanitario["tipo"];
   producto: string;
+  catalogoId: string | null;
   fecha: string;
   proximoRefuerzo: string | null;
 }
@@ -48,6 +49,7 @@ const eventoDesdeApi = (e: EventoSanitarioApi): EventoSanitario => ({
   rodeoId: e.rodeoId,
   tipo: e.tipo,
   producto: e.producto,
+  catalogoId: e.catalogoId,
   fecha: e.fecha,
   proximoRefuerzo: e.proximoRefuerzo,
 });
@@ -96,6 +98,7 @@ interface GanaderiaContextValue {
     tipo: EventoSanitario["tipo"],
     producto: string,
     proximoRefuerzo: string | null,
+    catalogoId: string | null,
   ) => Promise<void>;
 }
 
@@ -211,6 +214,7 @@ export function GanaderiaProvider({ children }: { children: ReactNode }) {
     tipo,
     producto,
     proximoRefuerzo,
+    catalogoId,
   ) => {
     await api.post("/sync/push", {
       changes: [
@@ -224,6 +228,7 @@ export function GanaderiaProvider({ children }: { children: ReactNode }) {
             rodeoId,
             tipo,
             producto: producto.trim(),
+            catalogoId,
             fecha: new Date().toISOString(),
             proximoRefuerzo,
           },

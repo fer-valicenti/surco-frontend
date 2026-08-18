@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { AlertTriangle, Beef, Droplets, Leaf, MapPinned, Plus, Tractor } from "lucide-react";
+import { AlertTriangle, Beef, Droplets, Leaf, MapPinned, Plus, Syringe, Tractor } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/surco/shell";
 import { Chip, PageHeader, SectionLabel } from "@/components/surco/bits";
@@ -25,7 +25,15 @@ import { centroide } from "@/lib/geo";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-store";
 import { nf, puedeGestionar } from "@/lib/surco-data";
-import type { EstadoPotrero, MetodoCuantificacion, Poligono, TipoHallazgo, TipoMaquina, TipoInsumo } from "@/lib/surco-data";
+import type {
+  EstadoPotrero,
+  MetodoCuantificacion,
+  Poligono,
+  TipoHallazgo,
+  TipoMaquina,
+  TipoInsumo,
+  TipoCatalogoSanitario,
+} from "@/lib/surco-data";
 
 const ETIQUETA_TIPO_MAQUINA: Record<TipoMaquina, string> = {
   pulverizadora: "Pulverizadora",
@@ -67,6 +75,12 @@ const ETIQUETA_ESTADO_POTRERO: Record<EstadoPotrero, string> = {
   en_pastoreo: "En pastoreo",
   en_descanso: "En descanso",
 };
+const ETIQUETA_TIPO_CATALOGO_SANITARIO: Record<TipoCatalogoSanitario, string> = {
+  vacuna: "Vacuna",
+  antiparasitario: "Antiparasitario",
+  enfermedad: "Enfermedad",
+  medicamento: "Medicamento",
+};
 
 function CatalogosPage() {
   return (
@@ -74,7 +88,7 @@ function CatalogosPage() {
       <PageHeader
         eyebrow="Catálogos · §07"
         title="Catálogos del establecimiento"
-        description="Especies, máquinas, insumos, potreros y categorías de ganado — usados en scouting, calibración, órdenes y ganadería."
+        description="Especies, máquinas, insumos, potreros, categorías de ganado y sanidad — usados en scouting, calibración, órdenes y ganadería."
       />
 
       <Tabs defaultValue="especies">
@@ -84,6 +98,7 @@ function CatalogosPage() {
           <TabsTrigger value="insumos"><Droplets className="h-4 w-4" /> Insumos</TabsTrigger>
           <TabsTrigger value="potreros"><MapPinned className="h-4 w-4" /> Potreros</TabsTrigger>
           <TabsTrigger value="categorias"><Beef className="h-4 w-4" /> Categorías de ganado</TabsTrigger>
+          <TabsTrigger value="sanidad"><Syringe className="h-4 w-4" /> Sanidad</TabsTrigger>
         </TabsList>
 
         <TabsContent value="especies" className="mt-4"><TabEspecies /></TabsContent>
@@ -91,6 +106,7 @@ function CatalogosPage() {
         <TabsContent value="insumos" className="mt-4"><TabInsumos /></TabsContent>
         <TabsContent value="potreros" className="mt-4"><TabPotreros /></TabsContent>
         <TabsContent value="categorias" className="mt-4"><TabCategorias /></TabsContent>
+        <TabsContent value="sanidad" className="mt-4"><TabSanidad /></TabsContent>
       </Tabs>
     </AppShell>
   );
@@ -622,6 +638,83 @@ function TabCategorias() {
           <li key={c.id} className="flex items-center justify-between gap-3 p-4">
             <p className="font-semibold">{c.nombre}</p>
             <span className="num rounded-md bg-secondary px-2 py-1 text-xs font-bold text-secondary-foreground">×{nf(c.ev, 2)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* --------------------------------- sanidad ---------------------------------- */
+
+function TabSanidad() {
+  const { establecimiento } = useAuth();
+  const { catalogoSanitario, agregarItemCatalogoSanitario } = useCatalogos();
+  const [abierto, setAbierto] = useState(false);
+  const [tipo, setTipo] = useState<TipoCatalogoSanitario>("vacuna");
+  const [nombre, setNombre] = useState("");
+
+  const crear = async () => {
+    if (!nombre.trim()) {
+      toast.error("Completá el nombre");
+      return;
+    }
+    try {
+      await agregarItemCatalogoSanitario({ tipo, nombre: nombre.trim() });
+      setAbierto(false);
+      setNombre("");
+      toast.success("Ítem agregado al catálogo sanitario");
+    } catch (e) {
+      toast.error(mensajeError(e, "No se pudo guardar el ítem"));
+    }
+  };
+
+  return (
+    <section className="space-y-3">
+      <SectionLabel
+        aside={
+          puedeGestionar(establecimiento?.rol) ? (
+          <Dialog open={abierto} onOpenChange={setAbierto}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="h-4 w-4" /> Nuevo ítem</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nuevo ítem del catálogo sanitario</DialogTitle>
+                <DialogDescription>Queda disponible al instante en el selector de "Nuevo evento" de Ganadería.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select value={tipo} onValueChange={(v) => setTipo(v as TipoCatalogoSanitario)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(ETIQUETA_TIPO_CATALOGO_SANITARIO) as TipoCatalogoSanitario[]).map((t) => (
+                        <SelectItem key={t} value={t}>{ETIQUETA_TIPO_CATALOGO_SANITARIO[t]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="san-nombre">Nombre</Label>
+                  <Input id="san-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Aftosa trivalente" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={crear}>Guardar ítem</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          ) : null
+        }
+      >
+        {catalogoSanitario.length} ítems
+      </SectionLabel>
+      <ul className="divide-y divide-border rounded-md border border-border bg-card">
+        {catalogoSanitario.map((i) => (
+          <li key={i.id} className="flex items-center justify-between gap-3 p-4">
+            <p className="font-semibold">{i.nombre}</p>
+            <Chip tone="neutral">{ETIQUETA_TIPO_CATALOGO_SANITARIO[i.tipo]}</Chip>
           </li>
         ))}
       </ul>

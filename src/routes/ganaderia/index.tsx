@@ -39,6 +39,7 @@ import {
   nf,
   nfInt,
   puedeGestionar,
+  TIPO_EVENTO_A_CATALOGO,
   type EventoSanitario,
   type Rodeo,
   type TipoMovimiento,
@@ -85,7 +86,7 @@ function GanaderiaPage() {
     crearRodeo: crearRodeoCtx,
     crearEventoSanitario: crearEventoSanitarioCtx,
   } = useGanaderia();
-  const { categoriasGanado, potreros } = useCatalogos();
+  const { categoriasGanado, potreros, catalogoSanitario } = useCatalogos();
   const nombrePotrero = (id: string | null) => (id ? (potreros.find((p) => p.id === id)?.nombre ?? id) : "Sin potrero");
   const [movDe, setMovDe] = useState<Rodeo | null>(null);
   const [moverDe, setMoverDe] = useState<Rodeo | null>(null);
@@ -99,6 +100,7 @@ function GanaderiaPage() {
   const [nuevoEventoAbierto, setNuevoEventoAbierto] = useState(false);
   const [rodeoEventoId, setRodeoEventoId] = useState("");
   const [tipoEvento, setTipoEvento] = useState<EventoSanitario["tipo"]>("vacunacion");
+  const [catalogoSeleccionado, setCatalogoSeleccionado] = useState("otro");
   const [productoEvento, setProductoEvento] = useState("");
   const [proximoRefuerzoEvento, setProximoRefuerzoEvento] = useState("");
 
@@ -172,15 +174,27 @@ function GanaderiaPage() {
     }
   };
 
+  const catalogoFiltrado = catalogoSanitario.filter((c) => c.tipo === TIPO_EVENTO_A_CATALOGO[tipoEvento]);
+  const itemCatalogoElegido =
+    catalogoSeleccionado !== "otro" ? catalogoFiltrado.find((c) => c.id === catalogoSeleccionado) : undefined;
+
   const crearEventoSanitario = async () => {
-    if (!rodeoEventoId || !productoEvento.trim()) {
+    const producto = itemCatalogoElegido ? itemCatalogoElegido.nombre : productoEvento.trim();
+    if (!rodeoEventoId || !producto) {
       toast.error("Completá rodeo y producto");
       return;
     }
     try {
-      await crearEventoSanitarioCtx(rodeoEventoId, tipoEvento, productoEvento.trim(), proximoRefuerzoEvento || null);
+      await crearEventoSanitarioCtx(
+        rodeoEventoId,
+        tipoEvento,
+        producto,
+        proximoRefuerzoEvento || null,
+        itemCatalogoElegido?.id ?? null,
+      );
       setNuevoEventoAbierto(false);
       setProductoEvento("");
+      setCatalogoSeleccionado("otro");
       setProximoRefuerzoEvento("");
       toast.success("Evento sanitario registrado");
     } catch (e) {
@@ -433,7 +447,13 @@ function GanaderiaPage() {
                         </div>
                         <div className="space-y-2">
                           <Label>Tipo</Label>
-                          <Select value={tipoEvento} onValueChange={(v) => setTipoEvento(v as EventoSanitario["tipo"])}>
+                          <Select
+                            value={tipoEvento}
+                            onValueChange={(v) => {
+                              setTipoEvento(v as EventoSanitario["tipo"]);
+                              setCatalogoSeleccionado("otro");
+                            }}
+                          >
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {TIPOS_EVENTO.map((t) => (
@@ -444,14 +464,28 @@ function GanaderiaPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="evento-producto">Producto</Label>
-                        <Input
-                          id="evento-producto"
-                          value={productoEvento}
-                          onChange={(e) => setProductoEvento(e.target.value)}
-                          placeholder="Aftosa trivalente"
-                        />
+                        <Label>Producto</Label>
+                        <Select value={catalogoSeleccionado} onValueChange={setCatalogoSeleccionado}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {catalogoFiltrado.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                            ))}
+                            <SelectItem value="otro">Otro (escribir)</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
+                      {catalogoSeleccionado === "otro" ? (
+                        <div className="space-y-2">
+                          <Label htmlFor="evento-producto">Nombre del producto</Label>
+                          <Input
+                            id="evento-producto"
+                            value={productoEvento}
+                            onChange={(e) => setProductoEvento(e.target.value)}
+                            placeholder="Aftosa trivalente"
+                          />
+                        </div>
+                      ) : null}
                       <div className="space-y-2">
                         <Label htmlFor="evento-refuerzo">Próximo refuerzo (opcional)</Label>
                         <Input
